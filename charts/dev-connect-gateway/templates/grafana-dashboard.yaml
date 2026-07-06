@@ -340,11 +340,14 @@ data:
             "label": "Server",
             "multi": false,
             "name": "target",
-            "options": [],
-            "query": {
-              "query": "label_values(haproxy_backend_status, {{ .Values.monitoring.metrics.targetLabel }})",
-              "refId": "StandardVariableQuery"
-            },
+            "options": [
+              {
+                "selected": true,
+                "text": "{{ .Values.target.name }}",
+                "value": "{{ .Values.target.name }}"
+              }
+            ],
+            "query": "label_values(haproxy_backend_status, {{ .Values.monitoring.metrics.targetLabel }})",
             "refresh": 1,
             "regex": "",
             "sort": 1,

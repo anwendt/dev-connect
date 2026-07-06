@@ -201,6 +201,9 @@ func TestHelmChartIncludesRancherMonitoringIntegration(t *testing.T) {
 	assertContains(t, dashboard, "kind: ConfigMap")
 	assertContains(t, dashboard, "dev-connect Gateway")
 	assertContains(t, dashboard, "\"name\": \"target\"")
+	assertContains(t, dashboard, "\"label\": \"Server\"")
+	assertContains(t, dashboard, "\"options\": [")
+	assertContains(t, dashboard, "\"text\": \"{{ .Values.target.name }}\"")
 	assertContains(t, dashboard, "label_values(haproxy_backend_status")
 	assertContains(t, dashboard, "dev_connect_target=\\\"$target\\\"")
 }
