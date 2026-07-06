@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -186,11 +187,15 @@ func runCLI(t *testing.T, binary string, args ...any) string {
 
 	cmd := exec.Command(binary, cliArgs...)
 	cmd.Env = env
-	output, err := cmd.CombinedOutput()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("run dev-connect %v: %v\n%s", cliArgs, err, string(output))
+		t.Fatalf("run dev-connect %v: %v\nstdout:\n%s\nstderr:\n%s", cliArgs, err, stdout.String(), stderr.String())
 	}
-	return string(output)
+	return stdout.String()
 }
 
 func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string) {

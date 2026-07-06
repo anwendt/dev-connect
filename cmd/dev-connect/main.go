@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -17,6 +18,7 @@ import (
 	"github.com/anwendt/dev-connect/internal/config"
 	"github.com/anwendt/dev-connect/internal/connect"
 	"github.com/anwendt/dev-connect/internal/kubectl"
+	"github.com/anwendt/dev-connect/internal/logging"
 	"github.com/anwendt/dev-connect/internal/output"
 	"github.com/anwendt/dev-connect/internal/port"
 	"github.com/anwendt/dev-connect/internal/preflight"
@@ -183,6 +185,7 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				SessionID: result.State.SessionID,
 				LocalPort: result.LocalPort,
 			}
+			logCommand(cmd, *opts, "connect", response)
 			return writeResponse(cmd, opts, response)
 		},
 	}
@@ -375,7 +378,9 @@ func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 			if err := store.Clear(); err != nil {
 				return err
 			}
-			return writeResponse(cmd, opts, output.Response{Status: "Disconnected"})
+			response := output.Response{Status: "Disconnected"}
+			logCommand(cmd, *opts, "disconnect", response)
+			return writeResponse(cmd, opts, response)
 		},
 	}
 }
@@ -392,17 +397,21 @@ func newStatusCommand(opts *cliOptions) *cobra.Command {
 			}
 			state, err := (session.Store{Dir: sessionDir}).Load()
 			if errors.Is(err, session.ErrNotFound) {
-				return writeResponse(cmd, opts, output.Response{Status: "Disconnected"})
+				response := output.Response{Status: "Disconnected"}
+				logCommand(cmd, *opts, "status", response)
+				return writeResponse(cmd, opts, response)
 			}
 			if err != nil {
 				return err
 			}
-			return writeResponse(cmd, opts, output.Response{
+			response := output.Response{
 				Status:    "Connected",
 				Server:    state.Target,
 				SessionID: state.SessionID,
 				LocalPort: state.LocalPort,
-			})
+			}
+			logCommand(cmd, *opts, "status", response)
+			return writeResponse(cmd, opts, response)
 		},
 	}
 }
@@ -417,12 +426,44 @@ func newListCommand(opts *cliOptions) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return writeResponse(cmd, opts, output.Response{
+			response := output.Response{
 				Status:  "ok",
 				Targets: targetSummaries(loaded.Config),
-			})
+			}
+			logCommand(cmd, *opts, "list", response)
+			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func logCommand(cmd *cobra.Command, opts cliOptions, commandName string, response output.Response) {
+	logger, err := logging.New(logging.Config{
+		Format: opts.logFormat,
+		Level:  opts.logLevel,
+		Writer: cmd.ErrOrStderr(),
+	})
+	if err != nil {
+		return
+	}
+
+	attrs := []slog.Attr{
+		slog.String("command", commandName),
+		slog.String("status", response.Status),
+	}
+	if response.Server != "" {
+		attrs = append(attrs, slog.String("server", response.Server))
+	}
+	if response.SessionID != "" {
+		attrs = append(attrs, slog.String("sessionId", response.SessionID))
+	}
+	if response.LocalPort > 0 {
+		attrs = append(attrs, slog.Int("localPort", response.LocalPort))
+	}
+	if len(response.Targets) > 0 {
+		attrs = append(attrs, slog.Int("targetCount", len(response.Targets)))
+	}
+
+	logger.LogAttrs(cmd.Context(), slog.LevelInfo, "dev-connect command completed", attrs...)
 }
 
 func targetSummaries(cfg config.Config) []output.Target {

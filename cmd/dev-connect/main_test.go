@@ -332,6 +332,29 @@ func TestLogFormatAndOutputFlagsAreIndependent(t *testing.T) {
 	}
 }
 
+func TestLifecycleMetadataLogsUseStderr(t *testing.T) {
+	stdout, stderr := executeCommandStreams(t, "--log-format", "json", "--output", "json", "status")
+
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Disconnected" {
+		t.Fatalf("status = %v, want Disconnected", got["status"])
+	}
+
+	var logRecord map[string]any
+	if err := json.Unmarshal([]byte(stderr), &logRecord); err != nil {
+		t.Fatalf("stderr log is not JSON: %v\n%s", err, stderr)
+	}
+	if logRecord["msg"] != "dev-connect command completed" {
+		t.Fatalf("log msg = %v, want command completed", logRecord["msg"])
+	}
+	if logRecord["command"] != "status" || logRecord["status"] != "Disconnected" {
+		t.Fatalf("unexpected log record: %#v", logRecord)
+	}
+	if strings.Contains(stdout, "dev-connect command completed") {
+		t.Fatalf("stdout contains log data:\n%s", stdout)
+	}
+}
+
 func TestConfigLocationCommandPrintsDirectory(t *testing.T) {
 	cmd := newRootCommand()
 	var stdout bytes.Buffer
@@ -351,17 +374,25 @@ func TestConfigLocationCommandPrintsDirectory(t *testing.T) {
 func executeCommand(t *testing.T, args ...string) string {
 	t.Helper()
 
+	stdout, _ := executeCommandStreams(t, args...)
+	return stdout
+}
+
+func executeCommandStreams(t *testing.T, args ...string) (string, string) {
+	t.Helper()
+
 	cmd := newRootCommand()
 	var stdout bytes.Buffer
+	var stderr bytes.Buffer
 	cmd.SetOut(&stdout)
-	cmd.SetErr(&stdout)
+	cmd.SetErr(&stderr)
 	cmd.SetArgs(args)
 
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute %v: %v", args, err)
+		t.Fatalf("execute %v: %v\nstderr:\n%s", args, err, stderr.String())
 	}
 
-	return stdout.String()
+	return stdout.String(), stderr.String()
 }
 
 func decodeJSON(t *testing.T, data string) map[string]any {
