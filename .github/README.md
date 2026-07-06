@@ -46,6 +46,7 @@ The release workflow publishes:
 - Windows, Linux, and macOS client binaries,
 - Helm chart package,
 - Helm OCI chart in GHCR,
+- container image in GHCR,
 - SBOM,
 - checksums,
 - provenance attestations,

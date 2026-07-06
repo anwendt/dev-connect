@@ -226,6 +226,7 @@ The GitHub Actions release workflow builds and publishes:
 - Windows, Linux, and macOS client binaries,
 - Helm chart package,
 - Helm OCI chart in GHCR,
+- container image in GHCR,
 - SBOM,
 - checksums,
 - container image build and scan,

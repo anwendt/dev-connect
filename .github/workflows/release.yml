@@ -63,6 +63,12 @@ jobs:
       - name: Scan container
         run: make container-scan
 
+      - name: Publish container image
+        env:
+          CONTAINER_REGISTRY_USERNAME: ${{ github.actor }}
+          CONTAINER_REGISTRY_PASSWORD: ${{ github.token }}
+        run: make container-push
+
       - name: Package Helm chart
         run: make helm-package
 

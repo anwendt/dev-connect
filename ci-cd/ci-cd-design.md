@@ -205,10 +205,11 @@ Release build order:
 5. SBOM generation.
 6. Container build.
 7. Container scan.
-8. Helm chart package.
-9. Helm OCI publication.
-10. Signing.
-11. Release publication.
+8. Container image publication.
+9. Helm chart package.
+10. Helm OCI publication.
+11. Signing.
+12. Release publication.
 
 Release binaries shall be built first. Container images shall consume the released binary artifacts instead of compiling the application again inside the image build.
 

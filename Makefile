@@ -1,4 +1,4 @@
-.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
+.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-push container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -12,6 +12,9 @@ COSIGN ?= cosign
 GO_LICENSES ?= go-licenses
 TRIVY ?= trivy
 IMAGE ?= ghcr.io/anwendt/dev-connect:local
+CONTAINER_REGISTRY_HOST ?= ghcr.io
+CONTAINER_REGISTRY_USERNAME ?= $(GITHUB_ACTOR)
+CONTAINER_REGISTRY_PASSWORD ?= $(GITHUB_TOKEN)
 HELM_REGISTRY ?= oci://ghcr.io/anwendt/charts
 HELM_REGISTRY_HOST ?= ghcr.io
 HELM_REGISTRY_USERNAME ?= $(GITHUB_ACTOR)
@@ -32,6 +35,7 @@ help:
 		'  make test-performance-local Run local benchmark checks' \
 		'  make test             Run default validation tests' \
 		'  make container-build  Build gateway container image' \
+		'  make container-push   Push gateway container image' \
 		'  make helm-lint        Run Helm chart linting' \
 		'  make helm-template    Render Helm chart templates' \
 		'  make helm-package     Package Helm chart into dist/' \
@@ -89,6 +93,18 @@ container-build:
 	else \
 		printf '%s\n' 'docker not installed; skipping container-build in local slice.'; \
 	fi
+
+container-push: container-build
+	@if ! command -v $(DOCKER) >/dev/null 2>&1; then \
+		printf '%s\n' 'docker not installed; cannot push container image.'; \
+		exit 1; \
+	fi
+	@if [ -z "$(CONTAINER_REGISTRY_USERNAME)" ] || [ -z "$(CONTAINER_REGISTRY_PASSWORD)" ]; then \
+		printf '%s\n' 'CONTAINER_REGISTRY_USERNAME and CONTAINER_REGISTRY_PASSWORD are required for container-push.'; \
+		exit 1; \
+	fi
+	@printf '%s' "$(CONTAINER_REGISTRY_PASSWORD)" | $(DOCKER) login $(CONTAINER_REGISTRY_HOST) --username "$(CONTAINER_REGISTRY_USERNAME)" --password-stdin
+	$(DOCKER) push $(IMAGE)
 
 container-scan:
 	@if command -v $(TRIVY) >/dev/null 2>&1; then \
