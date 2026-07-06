@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: Kubernetes preflight foundation completed
+Status: kubectl executable runner foundation completed
 
 ## Scope
 
@@ -480,3 +480,25 @@ Notes:
 
 - The preflight package uses only the injected `kubectl.Runner`; it does not import Kubernetes or Rancher client libraries.
 - This slice does not yet wire preflight into the CLI because the real external process runner is still intentionally separate.
+
+## kubectl Executable Runner Foundation Result
+
+Implemented kubectl process execution artifacts:
+
+- `kubectl.ExecutableRunner` for invoking the locally installed `kubectl` binary.
+- `kubectl.ResolveExecutable` for deterministic executable discovery from configured search paths.
+- Capturing of stdout, stderr, and exit code.
+- Mapping of non-zero kubectl exits to `kubectl.ExitError`.
+- Base environment propagation to the kubectl process.
+- Per-command environment overrides without mutating global operating system settings.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- The runner shells out to the local `kubectl` executable and still does not import Kubernetes or Rancher client libraries.
+- Tests use local fake executables and do not require a real Kubernetes cluster, kubeconfig, or network access.
