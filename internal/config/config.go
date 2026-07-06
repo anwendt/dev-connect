@@ -156,6 +156,24 @@ func (cfg Config) Validate() error {
 	if cfg.Kind != Kind {
 		return fmt.Errorf("unsupported kind %q", cfg.Kind)
 	}
+	for name, context := range cfg.Contexts {
+		if context.Cluster == "" {
+			return fmt.Errorf("context %q missing cluster", name)
+		}
+		if len(cfg.Clusters) > 0 {
+			if _, ok := cfg.Clusters[context.Cluster]; !ok {
+				return fmt.Errorf("context %q references unknown cluster %q", name, context.Cluster)
+			}
+		}
+		if context.Gateway == "" {
+			return fmt.Errorf("context %q missing gateway", name)
+		}
+		if len(cfg.Gateways) > 0 {
+			if _, ok := cfg.Gateways[context.Gateway]; !ok {
+				return fmt.Errorf("context %q references unknown gateway %q", name, context.Gateway)
+			}
+		}
+	}
 	for name, target := range cfg.Targets {
 		if target.Gateway == "" {
 			return fmt.Errorf("target %q missing gateway", name)

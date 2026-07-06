@@ -214,6 +214,50 @@ gateways:
 	}
 }
 
+func TestValidateRejectsContextWithUnknownCluster(t *testing.T) {
+	_, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+contexts:
+  platform-dev:
+    cluster: missing
+    gateway: dev01
+gateways:
+  dev01:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev01
+    port: 22
+clusters:
+  dev:
+    kubernetesContext: rancher-dev
+`))
+	if err == nil {
+		t.Fatal("expected unknown cluster error")
+	}
+}
+
+func TestValidateRejectsContextWithUnknownGateway(t *testing.T) {
+	_, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+contexts:
+  platform-dev:
+    cluster: dev
+    gateway: missing
+gateways:
+  dev01:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev01
+    port: 22
+clusters:
+  dev:
+    kubernetesContext: rancher-dev
+`))
+	if err == nil {
+		t.Fatal("expected unknown gateway error")
+	}
+}
+
 func TestValidatePreservesProxyOverrideWithoutEnvironmentMutation(t *testing.T) {
 	t.Setenv("HTTPS_PROXY", "http://enterprise-proxy.example")
 
