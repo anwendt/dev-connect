@@ -39,6 +39,14 @@ spec:
             - name: ssh-tcp
               containerPort: 2222
               protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: 2222
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: 2222
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           resources:
 {{ toYaml .Values.resources | indent 12 }}
           securityContext:
@@ -59,4 +67,3 @@ spec:
             name: {{ include "dev-connect-gateway.fullname" . }}-haproxy
         - name: tmp
           emptyDir: {}
-

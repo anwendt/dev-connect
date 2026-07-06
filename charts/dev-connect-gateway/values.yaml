@@ -26,6 +26,12 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+readinessProbe:
+  periodSeconds: 10
+
+livenessProbe:
+  periodSeconds: 20
+
 autoscaling:
   enabled: false
   minReplicas: 2
@@ -41,4 +47,3 @@ networkPolicy:
   backendCIDR: 10.20.30.42/32
   dnsEgress:
     enabled: true
-

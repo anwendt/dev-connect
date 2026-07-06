@@ -66,6 +66,9 @@ func TestGatewayDeploymentPodSecurity(t *testing.T) {
 		"memory: 128Mi",
 		"cpu: 500m",
 		"memory: 256Mi",
+		"readinessProbe:",
+		"livenessProbe:",
+		"tcpSocket:",
 	} {
 		assertContains(t, content, required)
 	}
@@ -80,6 +83,10 @@ func TestHAProxyConfigIsTCPOnlyAndNonPrivileged(t *testing.T) {
 	assertContains(t, content, "mode tcp")
 	assertContains(t, content, "bind :2222")
 	assertContains(t, content, "server dev01 dev01.example.internal:22 check")
+	assertContains(t, content, "log stdout format raw local0")
+	assertContains(t, content, "option tcplog")
+	assertContains(t, content, "timeout client 12h")
+	assertContains(t, content, "timeout server 12h")
 	assertNotContains(t, content, "\n      bind :22\n")
 	assertNotContains(t, content, "ssl")
 	assertNotContains(t, content, "private_key")
@@ -138,11 +145,26 @@ func TestHelmChartPreservesSecurityDefaults(t *testing.T) {
 	assertContains(t, values, "enabled: false")
 	assertContains(t, deployment, "automountServiceAccountToken: false")
 	assertContains(t, deployment, "containerPort: 2222")
+	assertContains(t, deployment, "readinessProbe:")
+	assertContains(t, deployment, "livenessProbe:")
+	assertContains(t, deployment, "tcpSocket:")
 	assertContains(t, service, "type: ClusterIP")
 	assertContains(t, service, "targetPort: 2222")
 	assertContains(t, hpa, "if .Values.autoscaling.enabled")
 	assertNotContains(t, service, "LoadBalancer")
 	assertNotContains(t, service, "NodePort")
+}
+
+func TestHelmChartPreservesTCPLoggingDefaults(t *testing.T) {
+	configmap := readText(t, rootPath("charts/dev-connect-gateway/templates/configmap.yaml"))
+
+	assertContains(t, configmap, "mode tcp")
+	assertContains(t, configmap, "log stdout format raw local0")
+	assertContains(t, configmap, "option tcplog")
+	assertContains(t, configmap, "timeout client 12h")
+	assertContains(t, configmap, "timeout server 12h")
+	assertNotContains(t, configmap, "ssl")
+	assertNotContains(t, configmap, "private_key")
 }
 
 func kubernetesYAMLFiles(t *testing.T, dir string) []string {
