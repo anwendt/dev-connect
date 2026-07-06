@@ -12,9 +12,14 @@ var forbiddenImports = []string{
 	`"sigs.k8s.io/controller-runtime`,
 	`"github.com/rancher/`,
 	`"github.com/rancher-sandbox/`,
+	`"net/http"`,
+	`"net/http/httputil"`,
+	`"golang.org/x/net/websocket"`,
+	`"nhooyr.io/websocket"`,
+	`"github.com/gorilla/websocket"`,
 }
 
-func TestClientDoesNotImportForbiddenKubernetesOrRancherClients(t *testing.T) {
+func TestClientDoesNotImportForbiddenKubernetesRancherOrDirectHTTPClients(t *testing.T) {
 	root := filepath.Clean("../..")
 	scanRoots := []string{
 		filepath.Join(root, "cmd"),
