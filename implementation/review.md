@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: CLI kubectl preflight integration completed
+Status: kubectl port-forward readiness probe completed
 
 ## Scope
 
@@ -533,3 +533,26 @@ Notes:
 
 - The client still communicates with Kubernetes only by executing `kubectl`.
 - No direct HTTP(S), Kubernetes, or Rancher client implementation was introduced.
+
+## kubectl Port-Forward Readiness Probe Result
+
+Implemented long-running kubectl readiness artifacts:
+
+- `kubectl.ReadyRunner` interface for commands that become ready before process completion.
+- `kubectl.ExecutableRunner.RunUntilReady` for streaming stdout/stderr from long-running kubectl commands.
+- Readiness detection for `kubectl port-forward` output.
+- Automatic termination of the temporary functional port-forward probe after readiness is detected.
+- Exit-error mapping when kubectl fails before readiness.
+- Preflight now uses `RunUntilReady` for functional port-forward validation when the runner supports it.
+- Existing fake runner behavior remains supported for deterministic unit tests.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- This fixes the production behavior where real `kubectl port-forward` is a long-running process.
+- The implementation still executes only the local `kubectl` binary and does not introduce direct Kubernetes API clients.

@@ -23,6 +23,14 @@ type Runner interface {
 	Run(ctx context.Context, command Command) (Result, error)
 }
 
+// ReadyFunc reports whether kubectl output indicates readiness.
+type ReadyFunc func(output string) bool
+
+// ReadyRunner executes kubectl commands until output indicates readiness.
+type ReadyRunner interface {
+	RunUntilReady(ctx context.Context, command Command, ready ReadyFunc) (Result, error)
+}
+
 // ExitError describes a kubectl command that exited unsuccessfully.
 type ExitError struct {
 	Code   int

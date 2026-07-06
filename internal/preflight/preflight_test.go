@@ -40,6 +40,33 @@ func TestValidateRunsConnectivityRBACAndFunctionalPortForwardChecks(t *testing.T
 	assertArgs(t, commands[2].Args, []string{"--kubeconfig", "/tmp/kubeconfig", "--context", "platform-dev", "-n", "dev-connect", "port-forward", "service/dev-connect-gateway-dev01", "55221:22"})
 }
 
+func TestValidateUsesReadyRunnerForFunctionalPortForwardCheck(t *testing.T) {
+	runner := &fakeReadyRunner{
+		results: []kubectl.Result{
+			{Stdout: "Client Version: v1.30.0\nServer Version: v1.30.0\n"},
+			{Stdout: "yes\n"},
+		},
+		readyResult: kubectl.Result{Stdout: "Forwarding from 127.0.0.1:55221 -> 22\n"},
+	}
+
+	result, err := Validate(context.Background(), Options{
+		Runner:     runner,
+		Namespace:  "dev-connect",
+		Service:    "dev-connect-gateway-dev01",
+		LocalPort:  55221,
+		RemotePort: 22,
+	})
+	if err != nil {
+		t.Fatalf("validate preflight: %v", err)
+	}
+	if !result.FunctionalOK {
+		t.Fatalf("functional check not ok: %#v", result)
+	}
+	if !runner.readyCalled {
+		t.Fatal("RunUntilReady was not called")
+	}
+}
+
 func TestValidateRejectsDeniedRBACEvenWhenKubectlExitsZero(t *testing.T) {
 	runner := kubectl.NewFakeRunner(
 		kubectl.FakeResult{Stdout: "Client Version: v1.30.0\nServer Version: v1.30.0\n"},
@@ -91,6 +118,32 @@ func TestValidateRequiresRunner(t *testing.T) {
 	if err == nil {
 		t.Fatal("missing runner accepted")
 	}
+}
+
+type fakeReadyRunner struct {
+	results     []kubectl.Result
+	commands    []kubectl.Command
+	readyCalled bool
+	readyResult kubectl.Result
+}
+
+func (runner *fakeReadyRunner) Run(_ context.Context, command kubectl.Command) (kubectl.Result, error) {
+	runner.commands = append(runner.commands, command)
+	if len(runner.results) == 0 {
+		return kubectl.Result{}, nil
+	}
+	result := runner.results[0]
+	runner.results = runner.results[1:]
+	return result, nil
+}
+
+func (runner *fakeReadyRunner) RunUntilReady(_ context.Context, command kubectl.Command, ready kubectl.ReadyFunc) (kubectl.Result, error) {
+	runner.commands = append(runner.commands, command)
+	runner.readyCalled = true
+	if !ready(runner.readyResult.Stdout) {
+		return runner.readyResult, nil
+	}
+	return runner.readyResult, nil
 }
 
 func assertArgs(t *testing.T, got, want []string) {

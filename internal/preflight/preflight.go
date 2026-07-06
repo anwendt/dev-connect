@@ -62,14 +62,15 @@ func Validate(ctx context.Context, options Options) (Result, error) {
 		return Result{ConnectivityOK: true}, ErrPermissionDenied
 	}
 
-	functional, err := options.Runner.Run(ctx, kubectl.PortForwardServiceCommand(kubectl.PortForwardOptions{
+	portForwardCommand := kubectl.PortForwardServiceCommand(kubectl.PortForwardOptions{
 		Namespace:   options.Namespace,
 		Service:     options.Service,
 		LocalPort:   options.LocalPort,
 		RemotePort:  options.RemotePort,
 		ContextName: options.ContextName,
 		Kubeconfig:  options.Kubeconfig,
-	}))
+	})
+	functional, err := runPortForwardProbe(ctx, options.Runner, portForwardCommand)
 	if err != nil {
 		return Result{ConnectivityOK: true, RBACOK: true}, fmt.Errorf("verify kubectl port-forward functionally: %w", err)
 	}
@@ -78,4 +79,11 @@ func Validate(ctx context.Context, options Options) (Result, error) {
 	}
 
 	return Result{ConnectivityOK: true, RBACOK: true, FunctionalOK: true}, nil
+}
+
+func runPortForwardProbe(ctx context.Context, runner kubectl.Runner, command kubectl.Command) (kubectl.Result, error) {
+	if readyRunner, ok := runner.(kubectl.ReadyRunner); ok {
+		return readyRunner.RunUntilReady(ctx, command, tunnel.IsReadyOutput)
+	}
+	return runner.Run(ctx, command)
 }

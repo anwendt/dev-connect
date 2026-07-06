@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExecutableRunnerRunsKubectlFromPath(t *testing.T) {
@@ -113,6 +114,75 @@ exit 7
 	}
 	if result.ExitCode != 7 {
 		t.Fatalf("result exit code = %d, want 7", result.ExitCode)
+	}
+}
+
+func TestExecutableRunnerRunsUntilReadyAndStopsLongRunningProcess(t *testing.T) {
+	binDir := t.TempDir()
+	markerPath := filepath.Join(t.TempDir(), "completed")
+	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
+trap 'exit 0' TERM
+echo "starting"
+echo "Forwarding from 127.0.0.1:55221 -> 22"
+sleep 30
+echo "completed" > "$MARKER_PATH"
+`))
+
+	runner := ExecutableRunner{
+		Path:    kubectlPath,
+		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	result, err := runner.RunUntilReady(ctx, Command{}, func(output string) bool {
+		return strings.Contains(output, "Forwarding from ")
+	})
+	if err != nil {
+		t.Fatalf("run until ready: %v", err)
+	}
+	if !strings.Contains(result.Stdout, "Forwarding from 127.0.0.1:55221 -> 22") {
+		t.Fatalf("stdout missing readiness output: %q", result.Stdout)
+	}
+	if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
+		t.Fatalf("long-running process was not stopped after readiness: %v", err)
+	}
+}
+
+func TestExecutableRunnerRunUntilReadyReturnsExitErrorBeforeReadiness(t *testing.T) {
+	binDir := t.TempDir()
+	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
+echo "failed before ready" >&2
+exit 3
+`))
+
+	runner := ExecutableRunner{
+		Path:    kubectlPath,
+		BaseEnv: []string{"PATH=" + binDir},
+	}
+
+	_, err := runner.RunUntilReady(context.Background(), Command{}, func(output string) bool {
+		return strings.Contains(output, "Forwarding from ")
+	})
+	if err == nil {
+		t.Fatal("failing kubectl succeeded")
+	}
+
+	var exitErr ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error = %T, want ExitError", err)
+	}
+	if exitErr.Code != 3 {
+		t.Fatalf("exit code = %d, want 3", exitErr.Code)
+	}
+}
+
+func TestExecutableRunnerRunUntilReadyRequiresReadyFunc(t *testing.T) {
+	runner := ExecutableRunner{Path: filepath.Join(t.TempDir(), "kubectl")}
+
+	_, err := runner.RunUntilReady(context.Background(), Command{}, nil)
+	if err == nil {
+		t.Fatal("nil ready func accepted")
 	}
 }
 
