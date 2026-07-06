@@ -122,6 +122,9 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := ensureNoActiveSession(sessionDir); err != nil {
+				return err
+			}
 			sshDir, err := sshDir(sessionDir)
 			if err != nil {
 				return err
@@ -183,6 +186,17 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func ensureNoActiveSession(sessionDir string) error {
+	_, err := (session.Store{Dir: sessionDir}).Load()
+	if errors.Is(err, session.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return session.ErrLocked
 }
 
 func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, result connect.Result) (tunnel.Result, error) {

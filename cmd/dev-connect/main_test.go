@@ -282,6 +282,26 @@ func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
 	}
 }
 
+func TestConnectRejectsExistingSessionState(t *testing.T) {
+	configPath := writeCLIConfig(t)
+	sessionDir := t.TempDir()
+	writeSessionState(t, sessionDir, "/tmp/ssh_config", "/tmp/known_hosts")
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	cmd := newRootCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect"})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("connect with existing session succeeded")
+	}
+}
+
 func TestConnectFailsBeforeSideEffectsWhenConfigInvalid(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "dev-connect.yaml")
