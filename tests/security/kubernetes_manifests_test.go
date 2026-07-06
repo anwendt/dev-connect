@@ -182,6 +182,7 @@ func TestHelmChartIncludesRancherMonitoringIntegration(t *testing.T) {
 		"serviceMonitor:",
 		"prometheusRule:",
 		"grafanaDashboard:",
+		"targetLabel: dev_connect_target",
 		"namespace: cattle-dashboards",
 		"grafana_dashboard: \"1\"",
 		"release: rancher-monitoring",
@@ -193,10 +194,15 @@ func TestHelmChartIncludesRancherMonitoringIntegration(t *testing.T) {
 	assertContains(t, service, "targetPort: {{ .Values.monitoring.metrics.port }}")
 	assertContains(t, serviceMonitor, "kind: ServiceMonitor")
 	assertContains(t, serviceMonitor, "monitoring.coreos.com/v1")
+	assertContains(t, serviceMonitor, "metricRelabelings:")
 	assertContains(t, prometheusRule, "kind: PrometheusRule")
 	assertContains(t, prometheusRule, "DevConnectGatewayBackendDown")
+	assertContains(t, prometheusRule, "dev_connect_target")
 	assertContains(t, dashboard, "kind: ConfigMap")
 	assertContains(t, dashboard, "dev-connect Gateway")
+	assertContains(t, dashboard, "\"name\": \"target\"")
+	assertContains(t, dashboard, "label_values(haproxy_backend_status")
+	assertContains(t, dashboard, "dev_connect_target=\\\"$target\\\"")
 }
 
 func kubernetesYAMLFiles(t *testing.T, dir string) []string {

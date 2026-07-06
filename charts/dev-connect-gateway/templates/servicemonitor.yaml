@@ -20,4 +20,7 @@ spec:
       path: {{ .Values.monitoring.metrics.path }}
       interval: {{ .Values.monitoring.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+      metricRelabelings:
+        - targetLabel: {{ .Values.monitoring.metrics.targetLabel }}
+          replacement: {{ .Values.target.name | quote }}
 {{- end }}

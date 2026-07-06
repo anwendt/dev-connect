@@ -109,8 +109,8 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "haproxy_backend_status{proxy=\"target\",state=\"UP\"}",
-              "legendFormat": "{{ .Values.target.name }}",
+              "expr": "haproxy_backend_status{proxy=\"target\",state=\"UP\",dev_connect_target=\"$target\"}",
+              "legendFormat": "$target",
               "refId": "A"
             }
           ],
@@ -152,7 +152,7 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "sum(rate(haproxy_frontend_connections_total{proxy=\"ssh\"}[5m]))",
+              "expr": "sum(rate(haproxy_frontend_connections_total{proxy=\"ssh\",dev_connect_target=\"$target\"}[5m]))",
               "legendFormat": "SSH connections",
               "refId": "A"
             }
@@ -195,7 +195,7 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "sum(rate(haproxy_backend_connection_errors_total{proxy=\"target\"}[5m]))",
+              "expr": "sum(rate(haproxy_backend_connection_errors_total{proxy=\"target\",dev_connect_target=\"$target\"}[5m]))",
               "legendFormat": "Connection errors",
               "refId": "A"
             }
@@ -238,7 +238,7 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "sum(rate(haproxy_frontend_bytes_in_total{proxy=\"ssh\"}[5m]))",
+              "expr": "sum(rate(haproxy_frontend_bytes_in_total{proxy=\"ssh\",dev_connect_target=\"$target\"}[5m]))",
               "legendFormat": "Bytes in",
               "refId": "A"
             },
@@ -247,7 +247,7 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "sum(rate(haproxy_frontend_bytes_out_total{proxy=\"ssh\"}[5m]))",
+              "expr": "sum(rate(haproxy_frontend_bytes_out_total{proxy=\"ssh\",dev_connect_target=\"$target\"}[5m]))",
               "legendFormat": "Bytes out",
               "refId": "B"
             }
@@ -290,7 +290,7 @@ data:
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "sum(haproxy_process_current_connections)",
+              "expr": "sum(haproxy_process_current_connections{dev_connect_target=\"$target\"})",
               "legendFormat": "Current connections",
               "refId": "A"
             }
@@ -323,6 +323,32 @@ data:
             "refresh": 1,
             "regex": "",
             "type": "datasource"
+          },
+          {
+            "current": {
+              "selected": true,
+              "text": "{{ .Values.target.name }}",
+              "value": "{{ .Values.target.name }}"
+            },
+            "datasource": {
+              "type": "prometheus",
+              "uid": "${DS_PROMETHEUS}"
+            },
+            "definition": "label_values(haproxy_backend_status, {{ .Values.monitoring.metrics.targetLabel }})",
+            "hide": 0,
+            "includeAll": false,
+            "label": "Server",
+            "multi": false,
+            "name": "target",
+            "options": [],
+            "query": {
+              "query": "label_values(haproxy_backend_status, {{ .Values.monitoring.metrics.targetLabel }})",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "",
+            "sort": 1,
+            "type": "query"
           }
         ]
       },
@@ -332,8 +358,8 @@ data:
       },
       "timepicker": {},
       "timezone": "browser",
-      "title": "dev-connect Gateway - {{ .Values.target.name }}",
-      "uid": "dev-connect-gateway-{{ .Values.target.name }}",
+      "title": "dev-connect Gateway",
+      "uid": "dev-connect-gateway",
       "version": 1,
       "weekStart": ""
     }

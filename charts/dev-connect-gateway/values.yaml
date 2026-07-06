@@ -55,6 +55,7 @@ monitoring:
     enabled: true
     port: 8404
     path: /metrics
+    targetLabel: dev_connect_target
   serviceMonitor:
     enabled: true
     interval: 30s
