@@ -22,6 +22,18 @@ func TestRemoteSSHArgs(t *testing.T) {
 	}
 }
 
+func TestRemoteSSHArgsIncludesUserDataDir(t *testing.T) {
+	args, err := RemoteSSHArgs(LaunchOptions{TargetAlias: "dev01", UserDataDir: "/tmp/dev-connect/vscode"})
+	if err != nil {
+		t.Fatalf("remote SSH args: %v", err)
+	}
+
+	want := []string{"--user-data-dir", "/tmp/dev-connect/vscode", "--remote", "ssh-remote+dev01"}
+	if !equalStrings(args, want) {
+		t.Fatalf("args = %#v, want %#v", args, want)
+	}
+}
+
 func TestRemoteSSHArgsRejectsMissingTarget(t *testing.T) {
 	_, err := RemoteSSHArgs(LaunchOptions{})
 	if err == nil {

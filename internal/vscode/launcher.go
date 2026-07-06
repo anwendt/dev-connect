@@ -12,6 +12,7 @@ import (
 // LaunchOptions describes a VS Code Remote SSH launch request.
 type LaunchOptions struct {
 	TargetAlias string
+	UserDataDir string
 	Env         []string
 }
 
@@ -41,7 +42,12 @@ func RemoteSSHArgs(options LaunchOptions) ([]string, error) {
 	if options.TargetAlias == "" {
 		return nil, errors.New("target alias is required")
 	}
-	return []string{"--remote", "ssh-remote+" + options.TargetAlias}, nil
+	args := make([]string, 0, 4)
+	if options.UserDataDir != "" {
+		args = append(args, "--user-data-dir", options.UserDataDir)
+	}
+	args = append(args, "--remote", "ssh-remote+"+options.TargetAlias)
+	return args, nil
 }
 
 // Launch starts VS Code Desktop for a Remote SSH target.

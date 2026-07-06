@@ -109,13 +109,17 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 	sessionDir := t.TempDir()
 	sshConfigPath := filepath.Join(t.TempDir(), "ssh_config")
 	knownHostsPath := filepath.Join(t.TempDir(), "known_hosts")
+	vscodeUserDataDir := filepath.Join(t.TempDir(), "vscode-user-data")
 	if err := os.WriteFile(sshConfigPath, []byte("Host dev01\n"), 0o600); err != nil {
 		t.Fatalf("write ssh config: %v", err)
 	}
 	if err := os.WriteFile(knownHostsPath, []byte("host key\n"), 0o600); err != nil {
 		t.Fatalf("write known hosts: %v", err)
 	}
-	writeSessionState(t, sessionDir, sshConfigPath, knownHostsPath)
+	if err := os.MkdirAll(filepath.Join(vscodeUserDataDir, "User"), 0o700); err != nil {
+		t.Fatalf("create VS Code user data dir: %v", err)
+	}
+	writeSessionStateWithVSCodeUserDataDir(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir)
 	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
 
 	stdout := executeCommand(t, "disconnect", "--output", "json")
@@ -123,7 +127,7 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 	if got["status"] != "Disconnected" {
 		t.Fatalf("status = %v, want Disconnected", got["status"])
 	}
-	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath} {
+	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath, vscodeUserDataDir} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("%s still exists or unexpected stat error: %v", path, err)
 		}
@@ -173,6 +177,18 @@ func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath s
 func writeSessionStateWithPID(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string, portForwardPID int) {
 	t.Helper()
 
+	writeSessionStateData(t, sessionDir, sshConfigPath, knownHostsPath, "", portForwardPID)
+}
+
+func writeSessionStateWithVSCodeUserDataDir(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir string) {
+	t.Helper()
+
+	writeSessionStateData(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, 0)
+}
+
+func writeSessionStateData(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir string, portForwardPID int) {
+	t.Helper()
+
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
 		t.Fatalf("create session dir: %v", err)
 	}
@@ -185,6 +201,7 @@ func writeSessionStateWithPID(t *testing.T, sessionDir, sshConfigPath, knownHost
   "portForwardPid": ` + fmt.Sprint(portForwardPID) + `,
   "sshConfigPath": "` + sshConfigPath + `",
   "knownHostsPath": "` + knownHostsPath + `",
+  "vscodeUserDataDir": "` + vscodeUserDataDir + `",
   "reconnect": false
 }`)
 	if err := os.WriteFile(filepath.Join(sessionDir, "session.json"), data, 0o600); err != nil {
@@ -272,8 +289,9 @@ func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
 	launcherOutput := filepath.Join(t.TempDir(), "vscode-args.txt")
 	launcherPath := writeFakeCodeLauncher(t, launcherOutput)
 	configPath := writeCLIConfigWithVSCodeLauncher(t, launcherPath)
+	sessionDir := t.TempDir()
 	t.Setenv("DEV_CONNECT_CODE_PATH", launcherPath)
-	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
 	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
 	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
 	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
@@ -284,8 +302,22 @@ func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fake VS Code launcher output: %v", err)
 	}
-	if strings.TrimSpace(string(data)) != "--remote\nssh-remote+dev01" {
+	wantArgs := "--user-data-dir\n" + filepath.Join(sessionDir, "vscode-user-data") + "\n--remote\nssh-remote+dev01"
+	if strings.TrimSpace(string(data)) != wantArgs {
 		t.Fatalf("VS Code launcher args = %q", string(data))
+	}
+
+	settingsPath := filepath.Join(sessionDir, "vscode-user-data", "User", "settings.json")
+	settingsData, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("read VS Code settings: %v", err)
+	}
+	var settings map[string]string
+	if err := json.Unmarshal(settingsData, &settings); err != nil {
+		t.Fatalf("decode VS Code settings: %v\n%s", err, string(settingsData))
+	}
+	if settings["remote.SSH.configFile"] != filepath.Join(os.Getenv("DEV_CONNECT_SSH_DIR"), "ssh_config") {
+		t.Fatalf("remote.SSH.configFile = %q", settings["remote.SSH.configFile"])
 	}
 }
 

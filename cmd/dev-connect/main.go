@@ -174,8 +174,20 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			}
 
 			if !opts.noCode {
-				if err := launchVSCode(cmd.Context(), loaded.Config, args[0]); err != nil {
-					_ = sshconfig.Cleanup(result.SSHFiles)
+				vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
+				if err := vscode.PrepareUserDataDir(vscodeUserDataDir, result.State.SSHConfigPath); err != nil {
+					_ = cleanupSessionArtifacts(result.State)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+				result.State.VSCodeUserDataDir = vscodeUserDataDir
+				if err := (session.Store{Dir: result.SessionDir}).Save(result.State); err != nil {
+					_ = cleanupSessionArtifacts(result.State)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+				if err := launchVSCode(cmd.Context(), loaded.Config, args[0], result.State.VSCodeUserDataDir); err != nil {
+					_ = cleanupSessionArtifacts(result.State)
 					_ = (session.Store{Dir: result.SessionDir}).Clear()
 					return err
 				}
@@ -203,10 +215,7 @@ func ensureNoActiveSession(sessionDir string) error {
 		return err
 	}
 	if state.IsStale(sessionProcessExists) {
-		if err := sshconfig.Cleanup(sshconfig.SessionFiles{
-			ConfigPath:     state.SSHConfigPath,
-			KnownHostsPath: state.KnownHostsPath,
-		}); err != nil {
+		if err := cleanupSessionArtifacts(state); err != nil {
 			return err
 		}
 		return store.Clear()
@@ -246,9 +255,12 @@ func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, r
 	})
 }
 
-func launchVSCode(ctx context.Context, cfg config.Config, targetAlias string) error {
+func launchVSCode(ctx context.Context, cfg config.Config, targetAlias, userDataDir string) error {
 	if path := os.Getenv("DEV_CONNECT_CODE_PATH"); path != "" {
-		return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{TargetAlias: targetAlias})
+		return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{
+			TargetAlias: targetAlias,
+			UserDataDir: userDataDir,
+		})
 	}
 	path, err := vscode.ResolveLauncher(vscode.Options{
 		LocalAppData:   os.Getenv("LOCALAPPDATA"),
@@ -257,7 +269,10 @@ func launchVSCode(ctx context.Context, cfg config.Config, targetAlias string) er
 	if err != nil {
 		return err
 	}
-	return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{TargetAlias: targetAlias})
+	return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{
+		TargetAlias: targetAlias,
+		UserDataDir: userDataDir,
+	})
 }
 
 func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, result connect.Result) error {
@@ -380,10 +395,7 @@ func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 			}
 			if err == nil {
 				_ = session.TerminateProcess(state.PortForwardPID)
-				if cleanupErr := sshconfig.Cleanup(sshconfig.SessionFiles{
-					ConfigPath:     state.SSHConfigPath,
-					KnownHostsPath: state.KnownHostsPath,
-				}); cleanupErr != nil {
+				if cleanupErr := cleanupSessionArtifacts(state); cleanupErr != nil {
 					return cleanupErr
 				}
 			}
@@ -476,6 +488,16 @@ func logCommand(cmd *cobra.Command, opts cliOptions, commandName string, respons
 	}
 
 	logger.LogAttrs(cmd.Context(), slog.LevelInfo, "dev-connect command completed", attrs...)
+}
+
+func cleanupSessionArtifacts(state session.State) error {
+	if err := sshconfig.Cleanup(sshconfig.SessionFiles{
+		ConfigPath:     state.SSHConfigPath,
+		KnownHostsPath: state.KnownHostsPath,
+	}); err != nil {
+		return err
+	}
+	return vscode.CleanupUserDataDir(state.VSCodeUserDataDir)
 }
 
 func targetSummaries(cfg config.Config) []output.Target {
