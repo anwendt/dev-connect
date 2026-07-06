@@ -1,5 +1,12 @@
 # Helm Charts
 
-This directory is reserved for future Helm charts.
+Helm charts are packaged during release and published as:
 
-No Helm templates are created in Phase 8.
+- GitHub Release artifacts
+- OCI artifacts in GHCR
+
+The default OCI location is:
+
+```text
+oci://ghcr.io/anwendt/charts/dev-connect-gateway
+```

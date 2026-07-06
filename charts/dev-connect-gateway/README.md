@@ -3,6 +3,19 @@
 This chart deploys one HAProxy-based TCP gateway for a single dev-connect
 development target.
 
+## OCI Installation
+
+Release builds publish this chart as an OCI artifact in GHCR.
+
+Example:
+
+```sh
+helm install dev-connect-dev01 oci://ghcr.io/anwendt/charts/dev-connect-gateway \
+  --version 0.2.2 \
+  --namespace dev-connect \
+  --create-namespace
+```
+
 ## Rancher Monitoring
 
 Rancher Monitoring is supported through the Prometheus Operator resources used

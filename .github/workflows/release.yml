@@ -66,6 +66,12 @@ jobs:
       - name: Package Helm chart
         run: make helm-package
 
+      - name: Publish Helm OCI chart
+        env:
+          HELM_REGISTRY_USERNAME: ${{ github.actor }}
+          HELM_REGISTRY_PASSWORD: ${{ github.token }}
+        run: make helm-push
+
       - name: Generate checksums
         run: make checksums
 

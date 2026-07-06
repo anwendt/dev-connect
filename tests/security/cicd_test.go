@@ -26,6 +26,7 @@ func TestMakefileContainsApprovedCICDTargets(t *testing.T) {
 		"helm-lint:",
 		"helm-template:",
 		"helm-package:",
+		"helm-push:",
 		"sbom:",
 		"sign:",
 		"build-all:",
@@ -103,6 +104,7 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"make container-build",
 		"make container-scan",
 		"make helm-package",
+		"make helm-push",
 		"make checksums",
 		"make sign",
 		"cosign-installer",
@@ -110,6 +112,7 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"aquasecurity/setup-trivy",
 		"go install github.com/google/go-licenses@latest",
 		"actions/attest-build-provenance",
+		"HELM_REGISTRY_PASSWORD",
 		"gh release create",
 		"gh release upload",
 	} {

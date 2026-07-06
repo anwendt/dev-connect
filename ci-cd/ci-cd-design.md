@@ -191,6 +191,7 @@ Release outputs:
 - Cross-platform `dev-connect` binaries.
 - Container image.
 - Helm chart package.
+- Helm chart OCI artifact in GHCR.
 - SBOM.
 - Signatures.
 - GitHub Release notes.
@@ -204,8 +205,10 @@ Release build order:
 5. SBOM generation.
 6. Container build.
 7. Container scan.
-8. Signing.
-9. Release publication.
+8. Helm chart package.
+9. Helm OCI publication.
+10. Signing.
+11. Release publication.
 
 Release binaries shall be built first. Container images shall consume the released binary artifacts instead of compiling the application again inside the image build.
 
@@ -228,6 +231,12 @@ ghcr.io/anwendt/dev-connect
 ```
 
 The GHCR organization is `anwendt` for the initial implementation.
+
+Helm charts shall also be published as OCI artifacts:
+
+```text
+oci://ghcr.io/anwendt/charts/dev-connect-gateway
+```
 
 `latest` shall only be updated for stable releases, not alpha, beta, or release candidate builds.
 

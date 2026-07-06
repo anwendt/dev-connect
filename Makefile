@@ -1,4 +1,4 @@
-.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-scan helm-lint helm-template helm-package kustomize-build sbom sign release-check clean
+.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -12,6 +12,10 @@ COSIGN ?= cosign
 GO_LICENSES ?= go-licenses
 TRIVY ?= trivy
 IMAGE ?= ghcr.io/anwendt/dev-connect:local
+HELM_REGISTRY ?= oci://ghcr.io/anwendt/charts
+HELM_REGISTRY_HOST ?= ghcr.io
+HELM_REGISTRY_USERNAME ?= $(GITHUB_ACTOR)
+HELM_REGISTRY_PASSWORD ?= $(GITHUB_TOKEN)
 VERSION ?= dev
 
 help:
@@ -31,6 +35,7 @@ help:
 		'  make helm-lint        Run Helm chart linting' \
 		'  make helm-template    Render Helm chart templates' \
 		'  make helm-package     Package Helm chart into dist/' \
+		'  make helm-push        Push packaged Helm chart as OCI artifact' \
 		'  make kustomize-build  Render Kustomize base and autoscaling overlay' \
 		'  make sbom             Generate SPDX SBOM into dist/' \
 		'  make sign             Sign container image when cosign is available' \
@@ -121,6 +126,23 @@ helm-package:
 	else \
 		printf '%s\n' 'helm not installed; skipping helm-package in local slice.'; \
 	fi
+
+helm-push: helm-package
+	@if ! command -v $(HELM) >/dev/null 2>&1; then \
+		printf '%s\n' 'helm not installed; cannot push Helm OCI chart.'; \
+		exit 1; \
+	fi
+	@if [ -z "$(HELM_REGISTRY_USERNAME)" ] || [ -z "$(HELM_REGISTRY_PASSWORD)" ]; then \
+		printf '%s\n' 'HELM_REGISTRY_USERNAME and HELM_REGISTRY_PASSWORD are required for helm-push.'; \
+		exit 1; \
+	fi
+	@printf '%s' "$(HELM_REGISTRY_PASSWORD)" | $(HELM) registry login $(HELM_REGISTRY_HOST) --username "$(HELM_REGISTRY_USERNAME)" --password-stdin
+	@chart="$$(ls dist/dev-connect-gateway-*.tgz | head -n 1)"; \
+	if [ -z "$$chart" ]; then \
+		printf '%s\n' 'no packaged Helm chart found in dist/'; \
+		exit 1; \
+	fi; \
+	$(HELM) push "$$chart" $(HELM_REGISTRY)
 
 sbom:
 	@mkdir -p dist
