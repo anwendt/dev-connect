@@ -124,8 +124,8 @@ func TestExecutableRunnerRunsUntilReadyAndStopsLongRunningProcess(t *testing.T) 
 	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
 trap 'exit 0' TERM
 echo "starting"
-echo "Forwarding from 127.0.0.1:55221 -> 22"
 echo "ready" > "$READY_MARKER_PATH"
+echo "Forwarding from 127.0.0.1:55221 -> 22"
 sleep 30
 echo "completed" > "$MARKER_PATH"
 `))
