@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: kubectl executable runner foundation completed
+Status: CLI kubectl preflight integration completed
 
 ## Scope
 
@@ -502,3 +502,34 @@ Notes:
 
 - The runner shells out to the local `kubectl` executable and still does not import Kubernetes or Rancher client libraries.
 - Tests use local fake executables and do not require a real Kubernetes cluster, kubeconfig, or network access.
+
+## CLI kubectl Preflight Integration Result
+
+Implemented CLI preflight artifacts:
+
+- `dev-connect connect <target>` now runs Kubernetes preflight before returning `Prepared`.
+- The CLI uses `kubectl.ExecutableRunner` to invoke the local `kubectl` binary.
+- `kubectl` executable discovery supports:
+  - `DEV_CONNECT_KUBECTL_PATH` for deterministic tests and controlled overrides,
+  - normal `PATH` discovery for user execution.
+- Preflight uses the selected dev-connect context and cluster to resolve:
+  - Kubernetes context,
+  - kubeconfig path,
+  - process-scoped proxy overrides.
+- Preflight validates:
+  - Kubernetes API reachability,
+  - RBAC for `pods/portforward`,
+  - functional `kubectl port-forward` readiness.
+- If preflight fails after local preparation, generated session state and SSH files are cleaned up.
+- CLI unit tests and E2E tests use a fake `kubectl` executable and verify the full CLI flow without a real cluster.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- The client still communicates with Kubernetes only by executing `kubectl`.
+- No direct HTTP(S), Kubernetes, or Rancher client implementation was introduced.

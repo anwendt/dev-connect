@@ -115,8 +115,9 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
 	t.Setenv("DEV_CONNECT_SSH_DIR", sshDir)
 	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
 
-	stdout := executeCommand(t, "--config", configPath, "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
+	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
 	if got["apiVersion"] != "v1" {
@@ -139,6 +140,28 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(sshDir, "ssh_config")); err != nil {
 		t.Fatalf("ssh config was not written: %v", err)
+	}
+}
+
+func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
+	configPath := writeCLIConfig(t)
+	sessionDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "no"))
+
+	cmd := newRootCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect"})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("connect with denied kubectl RBAC succeeded")
+	}
+	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); !os.IsNotExist(err) {
+		t.Fatalf("session state was not cleaned after preflight failure: %v", err)
 	}
 }
 
@@ -238,6 +261,13 @@ func writeCLIConfig(t *testing.T) string {
 	data := []byte(`
 apiVersion: dev-connect/v1
 kind: DevConnectConfig
+contexts:
+  platform-dev:
+    cluster: dev
+    gateway: dev01
+clusters:
+  dev:
+    kubernetesContext: rancher-dev
 targets:
   dev01:
     gateway: dev01
@@ -254,4 +284,32 @@ hostKeys:
 		t.Fatalf("write config: %v", err)
 	}
 	return configPath
+}
+
+func writeFakeKubectl(t *testing.T, canI string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "kubectl")
+	script := `#!/bin/sh
+case "$*" in
+  *"version"*)
+    echo "Client Version: v1.30.0"
+    echo "Server Version: v1.30.0"
+    ;;
+  *"auth can-i create pods/portforward"*)
+    echo "` + canI + `"
+    ;;
+  *"port-forward"*)
+    echo "Forwarding from 127.0.0.1:55221 -> 22"
+    ;;
+  *)
+    echo "unexpected kubectl args: $*" >&2
+    exit 9
+    ;;
+esac
+`
+	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
+		t.Fatalf("write fake kubectl: %v", err)
+	}
+	return path
 }

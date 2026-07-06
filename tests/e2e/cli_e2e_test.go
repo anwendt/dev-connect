@@ -13,16 +13,19 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 	configPath := writeConfig(t)
 	sessionDir := t.TempDir()
 	sshDir := t.TempDir()
+	kubectlPath := writeFakeKubectl(t, "yes")
 
 	output := runCLI(t, binary,
 		"--config", configPath,
 		"--output", "json",
+		"--context", "platform-dev",
 		"connect", "dev01",
 		"--no-code",
 		"--no-reconnect",
 		withEnv("DEV_CONNECT_SESSION_DIR="+sessionDir),
 		withEnv("DEV_CONNECT_SSH_DIR="+sshDir),
 		withEnv("DEV_CONNECT_TEST_LOCAL_PORT=55221"),
+		withEnv("DEV_CONNECT_KUBECTL_PATH="+kubectlPath),
 	)
 
 	var response map[string]any
@@ -132,6 +135,13 @@ func writeConfig(t *testing.T) string {
 	data := []byte(`
 apiVersion: dev-connect/v1
 kind: DevConnectConfig
+contexts:
+  platform-dev:
+    cluster: dev
+    gateway: dev01
+clusters:
+  dev:
+    kubernetesContext: rancher-dev
 targets:
   dev01:
     gateway: dev01
@@ -148,6 +158,34 @@ hostKeys:
 		t.Fatalf("write config: %v", err)
 	}
 	return configPath
+}
+
+func writeFakeKubectl(t *testing.T, canI string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "kubectl")
+	script := `#!/bin/sh
+case "$*" in
+  *"version"*)
+    echo "Client Version: v1.30.0"
+    echo "Server Version: v1.30.0"
+    ;;
+  *"auth can-i create pods/portforward"*)
+    echo "` + canI + `"
+    ;;
+  *"port-forward"*)
+    echo "Forwarding from 127.0.0.1:55221 -> 22"
+    ;;
+  *)
+    echo "unexpected kubectl args: $*" >&2
+    exit 9
+    ;;
+esac
+`
+	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
+		t.Fatalf("write fake kubectl: %v", err)
+	}
+	return path
 }
 
 func projectRoot(t *testing.T) string {

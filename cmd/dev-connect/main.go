@@ -2,18 +2,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/anwendt/dev-connect/internal/config"
 	"github.com/anwendt/dev-connect/internal/connect"
+	"github.com/anwendt/dev-connect/internal/kubectl"
 	"github.com/anwendt/dev-connect/internal/output"
 	"github.com/anwendt/dev-connect/internal/port"
+	"github.com/anwendt/dev-connect/internal/preflight"
+	"github.com/anwendt/dev-connect/internal/proxy"
+	"github.com/anwendt/dev-connect/internal/session"
+	"github.com/anwendt/dev-connect/internal/sshconfig"
 )
 
 type cliOptions struct {
@@ -116,6 +123,10 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 
+			cluster, err := selectedCluster(loaded.Config, *opts)
+			if err != nil {
+				return err
+			}
 			result, err := connect.Prepare(connect.Options{
 				Config:       loaded.Config,
 				TargetName:   args[0],
@@ -130,6 +141,12 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 
+			if err := runPreflight(cmd.Context(), *opts, cluster, result); err != nil {
+				_ = sshconfig.Cleanup(result.SSHFiles)
+				_ = (session.Store{Dir: result.SessionDir}).Clear()
+				return err
+			}
+
 			response := output.Response{
 				Status:    "Prepared",
 				Server:    args[0],
@@ -139,6 +156,69 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, result connect.Result) error {
+	if opts.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.timeout)
+		defer cancel()
+	}
+
+	kubectlPath, err := kubectlPath()
+	if err != nil {
+		return err
+	}
+
+	runner := kubectl.ExecutableRunner{
+		Path: kubectlPath,
+		BaseEnv: proxy.BuildEnv(os.Environ(), proxy.Config{
+			Enabled:    cluster.Proxy.Enabled,
+			HTTPProxy:  cluster.Proxy.HTTPProxy,
+			HTTPSProxy: cluster.Proxy.HTTPSProxy,
+			NoProxy:    cluster.Proxy.NoProxy,
+		}),
+	}
+
+	_, err = preflight.Validate(ctx, preflight.Options{
+		Runner:      runner,
+		Namespace:   result.Gateway.Namespace,
+		Service:     result.Gateway.Service,
+		LocalPort:   result.LocalPort,
+		RemotePort:  result.Gateway.Port,
+		ContextName: cluster.KubernetesContext,
+		Kubeconfig:  cluster.Kubeconfig,
+	})
+	return err
+}
+
+func selectedCluster(cfg config.Config, opts cliOptions) (config.Cluster, error) {
+	if opts.clusterName != "" {
+		cluster, ok := cfg.Clusters[opts.clusterName]
+		if !ok {
+			return config.Cluster{}, fmt.Errorf("unknown cluster %q", opts.clusterName)
+		}
+		return cluster, nil
+	}
+	if opts.contextName == "" {
+		return config.Cluster{}, nil
+	}
+	contextConfig, ok := cfg.Contexts[opts.contextName]
+	if !ok {
+		return config.Cluster{}, fmt.Errorf("unknown context %q", opts.contextName)
+	}
+	cluster, ok := cfg.Clusters[contextConfig.Cluster]
+	if !ok {
+		return config.Cluster{}, fmt.Errorf("context %q references unknown cluster %q", opts.contextName, contextConfig.Cluster)
+	}
+	return cluster, nil
+}
+
+func kubectlPath() (string, error) {
+	if path := os.Getenv("DEV_CONNECT_KUBECTL_PATH"); path != "" {
+		return kubectl.ResolveExecutable(path, nil)
+	}
+	return kubectl.ResolveExecutable("kubectl", strings.Split(os.Getenv("PATH"), string(os.PathListSeparator)))
 }
 
 func sessionDir() (string, error) {
