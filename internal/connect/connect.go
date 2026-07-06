@@ -100,6 +100,8 @@ func Prepare(options Options) (Result, error) {
 		Namespace:         gateway.Namespace,
 		KubernetesContext: kubernetesContext(options.Config, options.Context),
 		LocalPort:         allocation.Port,
+		SSHConfigPath:     sshFiles.ConfigPath,
+		KnownHostsPath:    sshFiles.KnownHostsPath,
 		StartedAt:         now(options.Now),
 		Reconnect:         options.Reconnect,
 	}

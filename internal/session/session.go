@@ -29,6 +29,8 @@ type State struct {
 	KubernetesContext string    `json:"kubernetesContext,omitempty"`
 	LocalPort         int       `json:"localPort,omitempty"`
 	PortForwardPID    int       `json:"portForwardPid,omitempty"`
+	SSHConfigPath     string    `json:"sshConfigPath,omitempty"`
+	KnownHostsPath    string    `json:"knownHostsPath,omitempty"`
 	StartedAt         time.Time `json:"startedAt,omitempty"`
 	Reconnect         bool      `json:"reconnect"`
 	SSHPrivateKey     string    `json:"-"`

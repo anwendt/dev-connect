@@ -69,6 +69,9 @@ func TestPrepareCreatesSSHFilesAndSessionState(t *testing.T) {
 	if state.KubernetesContext != "rancher-dev" {
 		t.Fatalf("kubernetes context = %q, want rancher-dev", state.KubernetesContext)
 	}
+	if state.SSHConfigPath != result.SSHFiles.ConfigPath || state.KnownHostsPath != result.SSHFiles.KnownHostsPath {
+		t.Fatalf("session SSH paths = %q/%q, want %q/%q", state.SSHConfigPath, state.KnownHostsPath, result.SSHFiles.ConfigPath, result.SSHFiles.KnownHostsPath)
+	}
 	if !state.Reconnect || !state.StartedAt.Equal(startedAt) {
 		t.Fatalf("unexpected session timing/reconnect state: %#v", state)
 	}

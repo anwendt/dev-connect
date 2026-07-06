@@ -16,6 +16,8 @@ func TestStoreRoundTripJSONState(t *testing.T) {
 		Namespace:         "dev-connect",
 		KubernetesContext: "platform-dev",
 		LocalPort:         55221,
+		SSHConfigPath:     "/tmp/dev-connect/ssh_config",
+		KnownHostsPath:    "/tmp/dev-connect/known_hosts",
 		StartedAt:         time.Unix(100, 0).UTC(),
 		Reconnect:         true,
 	}
@@ -31,6 +33,9 @@ func TestStoreRoundTripJSONState(t *testing.T) {
 
 	if got.SessionID != state.SessionID || got.Target != state.Target || got.LocalPort != state.LocalPort {
 		t.Fatalf("state mismatch: got %#v want %#v", got, state)
+	}
+	if got.SSHConfigPath != state.SSHConfigPath || got.KnownHostsPath != state.KnownHostsPath {
+		t.Fatalf("SSH file paths mismatch: got %#v want %#v", got, state)
 	}
 }
 
