@@ -81,7 +81,7 @@ func newRootCommand() *cobra.Command {
 	cmd.AddCommand(newStatusCommand(&opts))
 	cmd.AddCommand(newListCommand(&opts))
 	cmd.AddCommand(newVersionCommand())
-	cmd.AddCommand(newConfigCommand())
+	cmd.AddCommand(newConfigCommand(&opts))
 	helpCommand := newHelpCommand(cmd)
 	cmd.AddCommand(helpCommand)
 	cmd.SetHelpCommand(helpCommand)
@@ -564,7 +564,7 @@ func writeResponse(cmd *cobra.Command, opts *cliOptions, response output.Respons
 	return err
 }
 
-func newConfigCommand() *cobra.Command {
+func newConfigCommand(opts *cliOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage dev-connect configuration",
@@ -580,6 +580,20 @@ func newConfigCommand() *cobra.Command {
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), dir)
 			return err
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "validate",
+		Short: "Validate the dev-connect configuration file",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if _, err := loadConfig(*opts); err != nil {
+				return err
+			}
+			response := output.Response{Status: "Valid"}
+			logCommand(cmd, *opts, "config validate", response)
+			return writeResponse(cmd, opts, response)
 		},
 	})
 

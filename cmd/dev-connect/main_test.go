@@ -446,6 +446,38 @@ func TestConfigLocationCommandPrintsDirectory(t *testing.T) {
 	}
 }
 
+func TestConfigValidateOutputsVersionedJSON(t *testing.T) {
+	configPath := writeCLIConfig(t)
+	stdout := executeCommand(t, "--config", configPath, "--output", "json", "config", "validate")
+
+	got := decodeJSON(t, stdout)
+	if got["apiVersion"] != "v1" {
+		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
+	}
+	if got["status"] != "Valid" {
+		t.Fatalf("status = %v, want Valid", got["status"])
+	}
+}
+
+func TestConfigValidateRejectsInvalidConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	if err := os.WriteFile(configPath, []byte("apiVersion: dev-connect/v0\nkind: DevConnectConfig\n"), 0o600); err != nil {
+		t.Fatalf("write invalid config: %v", err)
+	}
+
+	cmd := newRootCommand()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stderr)
+	cmd.SetArgs([]string{"--config", configPath, "config", "validate"})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("invalid config validation succeeded")
+	}
+}
+
 func executeCommand(t *testing.T, args ...string) string {
 	t.Helper()
 
