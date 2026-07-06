@@ -20,7 +20,7 @@ echo "stderr:$2" >&2
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir},
+		BaseEnv: []string{testPath(binDir)},
 	}
 
 	result, err := runner.Run(context.Background(), Command{
@@ -49,7 +49,7 @@ echo "$HTTPS_PROXY"
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir, "HTTPS_PROXY=http://enterprise-proxy.example"},
+		BaseEnv: []string{testPath(binDir), "HTTPS_PROXY=http://enterprise-proxy.example"},
 	}
 
 	result, err := runner.Run(context.Background(), Command{})
@@ -70,7 +70,7 @@ echo "$HTTPS_PROXY"
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir, "HTTPS_PROXY=http://enterprise-proxy.example"},
+		BaseEnv: []string{testPath(binDir), "HTTPS_PROXY=http://enterprise-proxy.example"},
 	}
 
 	result, err := runner.Run(context.Background(), Command{
@@ -94,7 +94,7 @@ exit 7
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir},
+		BaseEnv: []string{testPath(binDir)},
 	}
 
 	result, err := runner.Run(context.Background(), Command{})
@@ -132,7 +132,7 @@ echo "completed" > "$MARKER_PATH"
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath, "READY_MARKER_PATH=" + readyMarkerPath},
+		BaseEnv: []string{testPath(binDir), "MARKER_PATH=" + markerPath, "READY_MARKER_PATH=" + readyMarkerPath},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -160,7 +160,7 @@ exit 3
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir},
+		BaseEnv: []string{testPath(binDir)},
 	}
 
 	_, err := runner.RunUntilReady(context.Background(), Command{}, func(output string) bool {
@@ -200,7 +200,7 @@ echo "completed" > "$MARKER_PATH"
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath},
+		BaseEnv: []string{testPath(binDir), "MARKER_PATH=" + markerPath},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -235,7 +235,7 @@ exit 5
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir},
+		BaseEnv: []string{testPath(binDir)},
 	}
 
 	_, err := runner.StartUntilReady(context.Background(), Command{}, func(output string) bool {
@@ -298,4 +298,12 @@ func writeFakeExecutable(t *testing.T, dir, name, content string) string {
 
 func fakeScript(body string) string {
 	return "#!/bin/sh\n" + body
+}
+
+func testPath(binDir string) string {
+	path := binDir
+	if existingPath := os.Getenv("PATH"); existingPath != "" {
+		path += string(os.PathListSeparator) + existingPath
+	}
+	return "PATH=" + path
 }
