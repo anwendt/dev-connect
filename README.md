@@ -15,4 +15,20 @@ Current status:
 - Phase 9 CI/CD Design: approved.
 - Phase 10 Documentation: approved.
 
-The specification and design phases are complete. Implementation shall start with tests according to the approved TDD process.
+Implementation status:
+
+- Go CLI implementation is in progress and buildable.
+- Client builds are generated for Windows amd64, Linux amd64/arm64, and macOS amd64/arm64.
+- Kubernetes gateway manifests, Helm chart, and Kustomize resources are present.
+- Unit, integration, security, E2E, and local performance tests are wired through `make`.
+- Production load testing is intentionally not part of the current implementation slice.
+
+Primary local validation:
+
+```text
+make test
+make lint
+make build-all VERSION=dev
+make helm-template
+make kustomize-build
+```

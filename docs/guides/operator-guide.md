@@ -1,6 +1,6 @@
 # dev-connect Operator Guide
 
-Status: Draft for Phase 10 review
+Status: Implementation guide
 
 ## Purpose
 
@@ -58,6 +58,17 @@ limits:
 
 These values shall be validated through Phase 7 performance tests.
 
+## Health Probes
+
+Gateway Pods expose HAProxy on container port `2222`.
+
+The Kubernetes Deployment uses TCP probes:
+
+- readiness probe on port `2222`,
+- liveness probe on port `2222`.
+
+The Service continues to expose standard SSH port `22` and forwards to container port `2222`.
+
 ## NetworkPolicy
 
 The namespace should follow default deny ingress and egress.
@@ -95,6 +106,14 @@ Forbidden developer access:
 
 Logs contain metadata only.
 
+HAProxy is configured for TCP logging to stdout:
+
+- `mode tcp`,
+- `log stdout format raw local0`,
+- `option tcplog`,
+- no SSH payload logging,
+- no SSH termination.
+
 Recommended operational signals:
 
 - active sessions,
@@ -120,6 +139,23 @@ Recommended logical dashboards:
 - `dev-connect Security`
 
 Platform-specific dashboard links shall be provided by the deployment documentation of the target environment.
+
+## Production Rollout Checklist
+
+Before production rollout, operators must validate:
+
+- Rancher-managed group membership for `dev-connect-users`.
+- Namespace-scoped RBAC grants only the approved resources and verbs.
+- `kubectl auth can-i create pods/portforward` succeeds for authorized users.
+- A functional `kubectl port-forward` preflight succeeds through Rancher.
+- NetworkPolicy allows only Kubernetes API ingress to the Service path and egress to approved backend SSH targets.
+- DNS egress is enabled only for DNS-based backend addressing.
+- Gateway Pods become ready and HAProxy backend health checks pass.
+- Logs arrive in Azure Monitor / Log Analytics or the target enterprise logging backend.
+- Host key inventory is managed by Platform GitOps with two-admin approval.
+- Windows, Linux, and macOS clients can run `dev-connect config validate`, `list`, `connect --no-code`, `status`, and `disconnect` in a controlled smoke test.
+
+The formal production load test is a separate pre-rollout activity and is not included in the current implementation slice.
 
 ## Host Key Operations
 

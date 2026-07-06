@@ -1,6 +1,6 @@
 # dev-connect Configuration Guide
 
-Status: Draft for Phase 10 review
+Status: Implementation guide
 
 ## Configuration Model
 
@@ -26,6 +26,13 @@ Load precedence:
 4. repository or working-directory config path for development
 
 Configuration is validated before starting external processes.
+
+Manual validation:
+
+```text
+dev-connect config validate
+dev-connect --output json config validate
+```
 
 ## Default Configuration Locations
 
