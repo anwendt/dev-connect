@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -349,9 +350,35 @@ func newListCommand(opts *cliOptions) *cobra.Command {
 		Short: "List configured dev-connect targets",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return writeResponse(cmd, opts, output.Response{Status: "ok"})
+			loaded, err := loadConfig(*opts)
+			if err != nil {
+				return err
+			}
+			return writeResponse(cmd, opts, output.Response{
+				Status:  "ok",
+				Targets: targetSummaries(loaded.Config),
+			})
 		},
 	}
+}
+
+func targetSummaries(cfg config.Config) []output.Target {
+	names := make([]string, 0, len(cfg.Targets))
+	for name := range cfg.Targets {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	targets := make([]output.Target, 0, len(names))
+	for _, name := range names {
+		target := cfg.Targets[name]
+		targets = append(targets, output.Target{
+			Name:    name,
+			Gateway: target.Gateway,
+			User:    target.User,
+		})
+	}
+	return targets
 }
 
 func newHelpCommand(root *cobra.Command) *cobra.Command {
@@ -386,6 +413,14 @@ func writeResponse(cmd *cobra.Command, opts *cliOptions, response output.Respons
 	if response.Server != "" {
 		_, err := fmt.Fprintf(cmd.OutOrStdout(), "%s %s\n", response.Status, response.Server)
 		return err
+	}
+	if len(response.Targets) > 0 {
+		for _, target := range response.Targets {
+			if _, err := fmt.Fprintln(cmd.OutOrStdout(), target.Name); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	_, err := fmt.Fprintln(cmd.OutOrStdout(), response.Status)
 	return err

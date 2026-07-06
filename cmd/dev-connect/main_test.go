@@ -141,7 +141,8 @@ func TestDisconnectWithoutSessionIsIdempotent(t *testing.T) {
 }
 
 func TestListOutputsVersionedJSON(t *testing.T) {
-	stdout := executeCommand(t, "--output", "json", "list")
+	configPath := writeCLIConfig(t)
+	stdout := executeCommand(t, "--config", configPath, "--output", "json", "list")
 
 	got := decodeJSON(t, stdout)
 	if got["apiVersion"] != "v1" {
@@ -149,6 +150,17 @@ func TestListOutputsVersionedJSON(t *testing.T) {
 	}
 	if got["status"] != "ok" {
 		t.Fatalf("status = %v, want ok", got["status"])
+	}
+	targets, ok := got["targets"].([]any)
+	if !ok || len(targets) != 1 {
+		t.Fatalf("targets = %#v, want one target", got["targets"])
+	}
+	target, ok := targets[0].(map[string]any)
+	if !ok {
+		t.Fatalf("target shape = %#v", targets[0])
+	}
+	if target["name"] != "dev01" || target["gateway"] != "dev01" {
+		t.Fatalf("target = %#v, want dev01/dev01", target)
 	}
 }
 

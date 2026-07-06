@@ -10,11 +10,19 @@ const APIVersion = "v1"
 
 // Response is the common versioned command response shape.
 type Response struct {
-	APIVersion string `json:"apiVersion"`
-	Status     string `json:"status,omitempty"`
-	Server     string `json:"server,omitempty"`
-	SessionID  string `json:"sessionId,omitempty"`
-	LocalPort  int    `json:"localPort,omitempty"`
+	APIVersion string   `json:"apiVersion"`
+	Status     string   `json:"status,omitempty"`
+	Server     string   `json:"server,omitempty"`
+	SessionID  string   `json:"sessionId,omitempty"`
+	LocalPort  int      `json:"localPort,omitempty"`
+	Targets    []Target `json:"targets,omitempty"`
+}
+
+// Target is a public JSON summary for a configured development target.
+type Target struct {
+	Name    string `json:"name"`
+	Gateway string `json:"gateway"`
+	User    string `json:"user,omitempty"`
 }
 
 // WriteJSON writes a versioned command response as JSON.
