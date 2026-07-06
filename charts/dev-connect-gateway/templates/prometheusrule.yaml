@@ -1,0 +1,41 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "dev-connect-gateway.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "dev-connect-gateway.name" . }}
+    app.kubernetes.io/instance: {{ .Values.target.name }}
+    app.kubernetes.io/part-of: dev-connect
+{{- with .Values.monitoring.prometheusRule.labels }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  groups:
+    - name: dev-connect-gateway.rules
+      rules:
+{{- if .Values.monitoring.prometheusRule.rules.backendDown.enabled }}
+        - alert: DevConnectGatewayBackendDown
+          expr: haproxy_backend_status{proxy="target",state="UP"} == 0
+          for: {{ .Values.monitoring.prometheusRule.rules.backendDown.for }}
+          labels:
+            severity: {{ .Values.monitoring.prometheusRule.rules.backendDown.severity }}
+            app: dev-connect
+            target: {{ .Values.target.name }}
+          annotations:
+            summary: dev-connect backend is down
+            description: HAProxy cannot reach the configured development server backend for {{ .Values.target.name }}.
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.rules.highConnectionErrors.enabled }}
+        - alert: DevConnectGatewayHighConnectionErrors
+          expr: sum(rate(haproxy_backend_connection_errors_total{proxy="target"}[5m])) by (proxy) > 0
+          for: {{ .Values.monitoring.prometheusRule.rules.highConnectionErrors.for }}
+          labels:
+            severity: {{ .Values.monitoring.prometheusRule.rules.highConnectionErrors.severity }}
+            app: dev-connect
+            target: {{ .Values.target.name }}
+          annotations:
+            summary: dev-connect gateway reports TCP connection errors
+            description: HAProxy reports TCP connection errors on the dev-connect SSH frontend.
+{{- end }}
+{{- end }}

@@ -16,4 +16,9 @@ spec:
       protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: 2222
-
+{{- if and .Values.monitoring.enabled .Values.monitoring.metrics.enabled }}
+    - name: metrics
+      protocol: TCP
+      port: {{ .Values.service.metricsPort }}
+      targetPort: {{ .Values.monitoring.metrics.port }}
+{{- end }}

@@ -1,0 +1,23 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "dev-connect-gateway.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "dev-connect-gateway.name" . }}
+    app.kubernetes.io/instance: {{ .Values.target.name }}
+    app.kubernetes.io/part-of: dev-connect
+{{- with .Values.monitoring.serviceMonitor.labels }}
+{{ toYaml . | indent 4 }}
+{{- end }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "dev-connect-gateway.name" . }}
+      app.kubernetes.io/instance: {{ .Values.target.name }}
+  endpoints:
+    - port: metrics
+      path: {{ .Values.monitoring.metrics.path }}
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+{{- end }}

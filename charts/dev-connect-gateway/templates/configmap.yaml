@@ -23,6 +23,13 @@ data:
       bind :2222
       default_backend target
 
+{{- if and .Values.monitoring.enabled .Values.monitoring.metrics.enabled }}
+    frontend metrics
+      mode http
+      bind :{{ .Values.monitoring.metrics.port }}
+      http-request use-service prometheus-exporter if { path {{ .Values.monitoring.metrics.path }} }
+      no log
+
+{{- end }}
     backend target
       server {{ .Values.target.name }} {{ .Values.target.host }}:{{ .Values.target.port }} check
-

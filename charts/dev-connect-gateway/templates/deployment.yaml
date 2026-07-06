@@ -39,6 +39,11 @@ spec:
             - name: ssh-tcp
               containerPort: 2222
               protocol: TCP
+{{- if and .Values.monitoring.enabled .Values.monitoring.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.monitoring.metrics.port }}
+              protocol: TCP
+{{- end }}
           readinessProbe:
             tcpSocket:
               port: 2222

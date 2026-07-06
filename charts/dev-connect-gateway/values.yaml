@@ -17,6 +17,7 @@ service:
   type: ClusterIP
   port: 22
   targetPort: 2222
+  metricsPort: 8404
 
 resources:
   requests:
@@ -47,3 +48,34 @@ networkPolicy:
   backendCIDR: 10.20.30.42/32
   dnsEgress:
     enabled: true
+
+monitoring:
+  enabled: false
+  metrics:
+    enabled: true
+    port: 8404
+    path: /metrics
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+    labels:
+      release: rancher-monitoring
+  prometheusRule:
+    enabled: true
+    labels:
+      release: rancher-monitoring
+    rules:
+      backendDown:
+        enabled: true
+        for: 5m
+        severity: warning
+      highConnectionErrors:
+        enabled: true
+        for: 10m
+        severity: warning
+  grafanaDashboard:
+    enabled: true
+    namespace: cattle-dashboards
+    labels:
+      grafana_dashboard: "1"

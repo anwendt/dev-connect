@@ -15,6 +15,10 @@ spec:
     - ports:
         - protocol: TCP
           port: 2222
+{{- if and .Values.monitoring.enabled .Values.monitoring.metrics.enabled }}
+        - protocol: TCP
+          port: {{ .Values.monitoring.metrics.port }}
+{{- end }}
   egress:
     - to:
         - ipBlock:
@@ -30,4 +34,3 @@ spec:
           port: 53
 {{- end }}
 {{- end }}
-

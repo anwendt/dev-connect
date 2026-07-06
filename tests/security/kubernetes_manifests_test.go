@@ -167,6 +167,38 @@ func TestHelmChartPreservesTCPLoggingDefaults(t *testing.T) {
 	assertNotContains(t, configmap, "private_key")
 }
 
+func TestHelmChartIncludesRancherMonitoringIntegration(t *testing.T) {
+	values := readText(t, rootPath("charts/dev-connect-gateway/values.yaml"))
+	deployment := readText(t, rootPath("charts/dev-connect-gateway/templates/deployment.yaml"))
+	service := readText(t, rootPath("charts/dev-connect-gateway/templates/service.yaml"))
+	configmap := readText(t, rootPath("charts/dev-connect-gateway/templates/configmap.yaml"))
+	serviceMonitor := readText(t, rootPath("charts/dev-connect-gateway/templates/servicemonitor.yaml"))
+	prometheusRule := readText(t, rootPath("charts/dev-connect-gateway/templates/prometheusrule.yaml"))
+	dashboard := readText(t, rootPath("charts/dev-connect-gateway/templates/grafana-dashboard.yaml"))
+
+	for _, required := range []string{
+		"monitoring:",
+		"metrics:",
+		"serviceMonitor:",
+		"prometheusRule:",
+		"grafanaDashboard:",
+		"namespace: cattle-dashboards",
+		"grafana_dashboard: \"1\"",
+		"release: rancher-monitoring",
+	} {
+		assertContains(t, values, required)
+	}
+	assertContains(t, configmap, "prometheus-exporter")
+	assertContains(t, deployment, "containerPort: {{ .Values.monitoring.metrics.port }}")
+	assertContains(t, service, "targetPort: {{ .Values.monitoring.metrics.port }}")
+	assertContains(t, serviceMonitor, "kind: ServiceMonitor")
+	assertContains(t, serviceMonitor, "monitoring.coreos.com/v1")
+	assertContains(t, prometheusRule, "kind: PrometheusRule")
+	assertContains(t, prometheusRule, "DevConnectGatewayBackendDown")
+	assertContains(t, dashboard, "kind: ConfigMap")
+	assertContains(t, dashboard, "dev-connect Gateway")
+}
+
 func kubernetesYAMLFiles(t *testing.T, dir string) []string {
 	t.Helper()
 
