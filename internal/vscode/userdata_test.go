@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -41,6 +42,10 @@ func TestPrepareUserDataDirRejectsMissingDirectory(t *testing.T) {
 }
 
 func TestPrepareUserDataDirUsesRestrictedSettingsFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not reliable on Windows")
+	}
+
 	dir := t.TempDir()
 	if err := PrepareUserDataDir(dir, filepath.Join(t.TempDir(), "ssh_config")); err != nil {
 		t.Fatalf("prepare user data dir: %v", err)

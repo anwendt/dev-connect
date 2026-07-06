@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -126,6 +127,10 @@ func TestStoreLoadRejectsInvalidJSON(t *testing.T) {
 }
 
 func TestStoreSaveCreatesRestrictedStateFile(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not reliable on Windows")
+	}
+
 	store := Store{Dir: t.TempDir()}
 	if err := store.Save(State{SessionID: "session-1", Target: "dev01"}); err != nil {
 		t.Fatalf("save state: %v", err)
