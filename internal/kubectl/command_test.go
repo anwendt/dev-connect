@@ -51,6 +51,23 @@ func TestBuildAuthCanICommand(t *testing.T) {
 	}
 }
 
+func TestBuildVersionCommand(t *testing.T) {
+	cmd := VersionCommand(VersionOptions{
+		ContextName: "platform-dev",
+		Kubeconfig:  "/tmp/kubeconfig",
+	})
+
+	want := []string{
+		"--kubeconfig", "/tmp/kubeconfig",
+		"--context", "platform-dev",
+		"version",
+	}
+
+	if !equalStrings(cmd.Args, want) {
+		t.Fatalf("args = %#v, want %#v", cmd.Args, want)
+	}
+}
+
 func TestFakeRunnerRecordsCommands(t *testing.T) {
 	runner := NewFakeRunner(FakeResult{Stdout: "yes\n"})
 

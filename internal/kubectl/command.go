@@ -52,6 +52,12 @@ type AuthCanIOptions struct {
 	Kubeconfig  string
 }
 
+// VersionOptions describes a kubectl version command.
+type VersionOptions struct {
+	ContextName string
+	Kubeconfig  string
+}
+
 // PortForwardServiceCommand builds a kubectl service port-forward command.
 func PortForwardServiceCommand(options PortForwardOptions) Command {
 	args := baseArgs(options.Kubeconfig, options.ContextName, options.Namespace)
@@ -72,6 +78,13 @@ func AuthCanICommand(options AuthCanIOptions) Command {
 		options.Verb,
 		options.Resource,
 	)
+	return Command{Args: args}
+}
+
+// VersionCommand builds a kubectl version command that verifies API reachability.
+func VersionCommand(options VersionOptions) Command {
+	args := baseArgs(options.Kubeconfig, options.ContextName, "")
+	args = append(args, "version")
 	return Command{Args: args}
 }
 

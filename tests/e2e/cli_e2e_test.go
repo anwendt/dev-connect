@@ -11,6 +11,8 @@ import (
 func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 	binary := buildCLI(t)
 	configPath := writeConfig(t)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
 
 	output := runCLI(t, binary,
 		"--config", configPath,
@@ -18,6 +20,9 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 		"connect", "dev01",
 		"--no-code",
 		"--no-reconnect",
+		withEnv("DEV_CONNECT_SESSION_DIR="+sessionDir),
+		withEnv("DEV_CONNECT_SSH_DIR="+sshDir),
+		withEnv("DEV_CONNECT_TEST_LOCAL_PORT=55221"),
 	)
 
 	var response map[string]any
@@ -28,11 +33,23 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 	if response["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", response["apiVersion"])
 	}
-	if response["status"] != "Pending" {
-		t.Fatalf("status = %v, want Pending", response["status"])
+	if response["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", response["status"])
 	}
 	if response["server"] != "dev01" {
 		t.Fatalf("server = %v, want dev01", response["server"])
+	}
+	if response["sessionId"] == "" {
+		t.Fatal("sessionId is empty")
+	}
+	if response["localPort"] != float64(55221) {
+		t.Fatalf("localPort = %v, want 55221", response["localPort"])
+	}
+	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); err != nil {
+		t.Fatalf("session state was not written: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(sshDir, "ssh_config")); err != nil {
+		t.Fatalf("ssh config was not written: %v", err)
 	}
 }
 
@@ -76,14 +93,33 @@ func buildCLI(t *testing.T) string {
 	return binary
 }
 
-func runCLI(t *testing.T, binary string, args ...string) string {
+type envArg string
+
+func withEnv(value string) envArg {
+	return envArg(value)
+}
+
+func runCLI(t *testing.T, binary string, args ...any) string {
 	t.Helper()
 
-	cmd := exec.Command(binary, args...)
-	cmd.Env = append(os.Environ(), "DEV_CONNECT_CONFIG=")
+	var cliArgs []string
+	env := append(os.Environ(), "DEV_CONNECT_CONFIG=")
+	for _, arg := range args {
+		switch value := arg.(type) {
+		case string:
+			cliArgs = append(cliArgs, value)
+		case envArg:
+			env = append(env, string(value))
+		default:
+			t.Fatalf("unsupported runCLI argument type %T", arg)
+		}
+	}
+
+	cmd := exec.Command(binary, cliArgs...)
+	cmd.Env = env
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("run dev-connect %v: %v\n%s", args, err, string(output))
+		t.Fatalf("run dev-connect %v: %v\n%s", cliArgs, err, string(output))
 	}
 	return string(output)
 }
@@ -105,6 +141,8 @@ gateways:
     namespace: dev-connect
     service: dev-connect-gateway-dev01
     port: 22
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
 `)
 	if err := os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)

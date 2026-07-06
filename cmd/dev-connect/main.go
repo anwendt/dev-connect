@@ -4,12 +4,16 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/anwendt/dev-connect/internal/config"
+	"github.com/anwendt/dev-connect/internal/connect"
 	"github.com/anwendt/dev-connect/internal/output"
+	"github.com/anwendt/dev-connect/internal/port"
 )
 
 type cliOptions struct {
@@ -98,16 +102,75 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 		Short: "Prepare a VS Code Remote SSH connection",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := loadConfig(*opts); err != nil {
+			loaded, err := loadConfig(*opts)
+			if err != nil {
 				return err
 			}
+
+			sessionDir, err := sessionDir()
+			if err != nil {
+				return err
+			}
+			sshDir, err := sshDir(sessionDir)
+			if err != nil {
+				return err
+			}
+
+			result, err := connect.Prepare(connect.Options{
+				Config:       loaded.Config,
+				TargetName:   args[0],
+				Context:      opts.contextName,
+				GatewayName:  opts.gatewayName,
+				SessionDir:   sessionDir,
+				SSHDir:       sshDir,
+				AllocatePort: allocatePort,
+				Reconnect:    !opts.noReconnect,
+			})
+			if err != nil {
+				return err
+			}
+
 			response := output.Response{
-				Status: "Pending",
-				Server: args[0],
+				Status:    "Prepared",
+				Server:    args[0],
+				SessionID: result.State.SessionID,
+				LocalPort: result.LocalPort,
 			}
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func sessionDir() (string, error) {
+	if dir := os.Getenv("DEV_CONNECT_SESSION_DIR"); dir != "" {
+		return dir, nil
+	}
+	dir, err := config.DefaultDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "session"), nil
+}
+
+func sshDir(sessionDir string) (string, error) {
+	if dir := os.Getenv("DEV_CONNECT_SSH_DIR"); dir != "" {
+		return dir, nil
+	}
+	if sessionDir == "" {
+		return "", fmt.Errorf("session directory is required")
+	}
+	return filepath.Join(sessionDir, "ssh"), nil
+}
+
+func allocatePort() (port.Allocation, error) {
+	if value := os.Getenv("DEV_CONNECT_TEST_LOCAL_PORT"); value != "" {
+		localPort, err := strconv.Atoi(value)
+		if err != nil {
+			return port.Allocation{}, fmt.Errorf("parse DEV_CONNECT_TEST_LOCAL_PORT: %w", err)
+		}
+		return port.Allocation{Host: "127.0.0.1", Port: localPort}, nil
+	}
+	return port.AllocateLoopback()
 }
 
 func loadConfig(opts cliOptions) (config.Loaded, error) {

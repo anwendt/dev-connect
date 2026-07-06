@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: Connect orchestration foundation completed
+Status: Kubernetes preflight foundation completed
 
 ## Scope
 
@@ -420,3 +420,63 @@ Notes:
 - The orchestration package remains side-effect limited to local files and injected port allocation.
 - This slice still does not start real `kubectl`, SSH, or VS Code processes.
 - Host key material is used only to write the session-scoped `known_hosts` file; no SSH private keys are generated or stored.
+
+## CLI Connect Preparation Integration Result
+
+Implemented CLI integration artifacts:
+
+- `dev-connect connect <target>` now loads the approved YAML configuration and invokes the connect orchestration package.
+- The CLI resolves:
+  - target,
+  - gateway override,
+  - Kubernetes context,
+  - pinned SSH host key,
+  - local session directory,
+  - session-scoped SSH directory.
+- The command writes local session state and temporary SSH config files before returning success.
+- JSON output now reports:
+  - `status: Prepared`,
+  - target server,
+  - generated session ID,
+  - allocated local port.
+- E2E tests now execute the real CLI binary and verify generated local session and SSH artifacts.
+- Test-only environment hooks isolate E2E validation from the local workstation:
+  - `DEV_CONNECT_SESSION_DIR`,
+  - `DEV_CONNECT_SSH_DIR`,
+  - `DEV_CONNECT_TEST_LOCAL_PORT`.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- This slice still does not start real `kubectl port-forward`, SSH, or VS Code.
+- E2E tests remain deterministic and do not require a real Kubernetes cluster, SSH server, VS Code installation, or network listener.
+
+## Kubernetes Preflight Foundation Result
+
+Implemented Kubernetes preflight artifacts:
+
+- `kubectl version` command builder for API reachability validation.
+- `internal/preflight` package for ordered Kubernetes validation.
+- Preflight validation sequence:
+  - verify Kubernetes API reachability through `kubectl version`,
+  - verify RBAC through `kubectl auth can-i create pods/portforward`,
+  - verify functional port-forward behavior through a temporary `kubectl port-forward` command.
+- RBAC denial detection when `kubectl auth can-i` exits successfully but returns `no`.
+- Functional validation failure when port-forward output does not indicate readiness.
+- Tests verify exact kubectl command arguments, including kubeconfig, context, namespace, Service, and port mapping.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- The preflight package uses only the injected `kubectl.Runner`; it does not import Kubernetes or Rancher client libraries.
+- This slice does not yet wire preflight into the CLI because the real external process runner is still intentionally separate.

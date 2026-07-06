@@ -110,17 +110,35 @@ func TestConnectRequiresTarget(t *testing.T) {
 
 func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	configPath := writeCLIConfig(t)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", sshDir)
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+
 	stdout := executeCommand(t, "--config", configPath, "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
 	if got["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
 	}
-	if got["status"] != "Pending" {
-		t.Fatalf("status = %v, want Pending", got["status"])
+	if got["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", got["status"])
 	}
 	if got["server"] != "dev01" {
 		t.Fatalf("server = %v, want dev01", got["server"])
+	}
+	if got["sessionId"] == "" {
+		t.Fatal("sessionId is empty")
+	}
+	if got["localPort"] != float64(55221) {
+		t.Fatalf("localPort = %v, want 55221", got["localPort"])
+	}
+	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); err != nil {
+		t.Fatalf("session state was not written: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(sshDir, "ssh_config")); err != nil {
+		t.Fatalf("ssh config was not written: %v", err)
 	}
 }
 
@@ -229,6 +247,8 @@ gateways:
     namespace: dev-connect
     service: dev-connect-gateway-dev01
     port: 22
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
 `)
 	if err := os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
