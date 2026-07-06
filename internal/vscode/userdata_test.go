@@ -34,6 +34,26 @@ func TestPrepareUserDataDirRejectsMissingSSHConfigPath(t *testing.T) {
 	}
 }
 
+func TestPrepareUserDataDirRejectsMissingDirectory(t *testing.T) {
+	if err := PrepareUserDataDir("", filepath.Join(t.TempDir(), "ssh_config")); err == nil {
+		t.Fatal("missing user data directory accepted")
+	}
+}
+
+func TestPrepareUserDataDirUsesRestrictedSettingsFilePermissions(t *testing.T) {
+	dir := t.TempDir()
+	if err := PrepareUserDataDir(dir, filepath.Join(t.TempDir(), "ssh_config")); err != nil {
+		t.Fatalf("prepare user data dir: %v", err)
+	}
+	info, err := os.Stat(filepath.Join(dir, "User", "settings.json"))
+	if err != nil {
+		t.Fatalf("stat settings: %v", err)
+	}
+	if got := info.Mode().Perm(); got != settingsFileMode {
+		t.Fatalf("settings mode = %#o, want %#o", got, settingsFileMode)
+	}
+}
+
 func TestCleanupUserDataDirRemovesDirectory(t *testing.T) {
 	dir := t.TempDir()
 	if err := PrepareUserDataDir(dir, filepath.Join(t.TempDir(), "ssh_config")); err != nil {
@@ -44,5 +64,11 @@ func TestCleanupUserDataDirRemovesDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Fatalf("user data dir still exists or unexpected stat error: %v", err)
+	}
+}
+
+func TestCleanupUserDataDirIgnoresEmptyDirectory(t *testing.T) {
+	if err := CleanupUserDataDir(""); err != nil {
+		t.Fatalf("cleanup empty dir: %v", err)
 	}
 }

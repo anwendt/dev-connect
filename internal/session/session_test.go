@@ -2,7 +2,9 @@ package session
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -40,10 +42,49 @@ func TestStoreRoundTripJSONState(t *testing.T) {
 }
 
 func TestStateRejectsCredentialFields(t *testing.T) {
-	state := State{SessionID: "session-1", Target: "dev01", SSHPrivateKey: "forbidden"}
+	tests := []struct {
+		name  string
+		state State
+		want  string
+	}{
+		{
+			name:  "private key",
+			state: State{SessionID: "session-1", Target: "dev01", SSHPrivateKey: "forbidden"},
+			want:  "SSH private keys",
+		},
+		{
+			name:  "password",
+			state: State{SessionID: "session-1", Target: "dev01", Password: "forbidden"},
+			want:  "passwords",
+		},
+		{
+			name:  "kubernetes token",
+			state: State{SessionID: "session-1", Target: "dev01", KubernetesToken: "forbidden"},
+			want:  "Kubernetes tokens",
+		},
+	}
 
-	if err := state.Validate(); err == nil {
-		t.Fatal("state with private key accepted")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.state.Validate()
+			if err == nil {
+				t.Fatal("state with credential field accepted")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestStoreSaveRejectsCredentialFields(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	err := store.Save(State{SessionID: "session-1", Target: "dev01", Password: "forbidden"})
+	if err == nil {
+		t.Fatal("Save accepted credential-bearing state")
+	}
+	if _, statErr := os.Stat(filepath.Join(store.Dir, stateFileName)); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("state file exists after rejected save: %v", statErr)
 	}
 }
 
@@ -57,6 +98,45 @@ func TestStoreClearRemovesState(t *testing.T) {
 	}
 	if _, err := store.Load(); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("load after clear error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestStoreClearIgnoresMissingState(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	if err := store.Clear(); err != nil {
+		t.Fatalf("clear missing state: %v", err)
+	}
+}
+
+func TestStoreLoadRejectsInvalidJSON(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	if err := os.MkdirAll(store.Dir, 0o700); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(store.Dir, stateFileName), []byte("{"), 0o600); err != nil {
+		t.Fatalf("write invalid JSON: %v", err)
+	}
+	_, err := store.Load()
+	if err == nil {
+		t.Fatal("Load accepted invalid JSON")
+	}
+	if !strings.Contains(err.Error(), "parse session state") {
+		t.Fatalf("error = %q, want parse session state", err)
+	}
+}
+
+func TestStoreSaveCreatesRestrictedStateFile(t *testing.T) {
+	store := Store{Dir: t.TempDir()}
+	if err := store.Save(State{SessionID: "session-1", Target: "dev01"}); err != nil {
+		t.Fatalf("save state: %v", err)
+	}
+
+	info, err := os.Stat(filepath.Join(store.Dir, stateFileName))
+	if err != nil {
+		t.Fatalf("stat state file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != stateFileMode {
+		t.Fatalf("file mode = %#o, want %#o", got, stateFileMode)
 	}
 }
 
@@ -97,8 +177,39 @@ func TestStaleStateDetection(t *testing.T) {
 	}
 }
 
+func TestStateWithoutProcessIsNotStale(t *testing.T) {
+	state := State{}
+	if state.IsStale(func(int) bool {
+		t.Fatal("processExists should not be called for empty PID")
+		return false
+	}) {
+		t.Fatal("state without PID is stale")
+	}
+}
+
 func TestTerminateProcessIgnoresEmptyPID(t *testing.T) {
 	if err := TerminateProcess(0); err != nil {
 		t.Fatalf("terminate empty PID: %v", err)
+	}
+}
+
+func TestReleaseNilLockIsNoop(t *testing.T) {
+	var lock *Lock
+	if err := lock.Release(); err != nil {
+		t.Fatalf("release nil lock: %v", err)
+	}
+}
+
+func TestReleaseAlreadyReleasedLockIsNoop(t *testing.T) {
+	lockPath := filepath.Join(t.TempDir(), "session.lock")
+	lock, err := AcquireLock(lockPath)
+	if err != nil {
+		t.Fatalf("acquire lock: %v", err)
+	}
+	if err := lock.Release(); err != nil {
+		t.Fatalf("release lock: %v", err)
+	}
+	if err := lock.Release(); err != nil {
+		t.Fatalf("release already released lock: %v", err)
 	}
 }

@@ -41,6 +41,30 @@ func TestRemoteSSHArgsRejectsMissingTarget(t *testing.T) {
 	}
 }
 
+func TestExitErrorFormatsMessage(t *testing.T) {
+	err := ExitError{Code: 4, Stderr: "launch failed"}
+	if !strings.Contains(err.Error(), "code 4") || !strings.Contains(err.Error(), "launch failed") {
+		t.Fatalf("Error() = %q", err.Error())
+	}
+}
+
+func TestExecutableLauncherRejectsMissingPath(t *testing.T) {
+	err := ExecutableLauncher{}.Launch(context.Background(), LaunchOptions{TargetAlias: "dev01"})
+	if err == nil {
+		t.Fatal("missing launcher path accepted")
+	}
+}
+
+func TestExecutableLauncherPropagatesMissingExecutable(t *testing.T) {
+	err := ExecutableLauncher{Path: filepath.Join(t.TempDir(), "missing-code")}.Launch(context.Background(), LaunchOptions{TargetAlias: "dev01"})
+	if err == nil {
+		t.Fatal("missing executable launched successfully")
+	}
+	if !strings.Contains(err.Error(), "launch VS Code") {
+		t.Fatalf("error = %q, want launch VS Code", err)
+	}
+}
+
 func TestExecutableLauncherRunsVSCode(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell script fake launcher is not used on Windows")

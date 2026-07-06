@@ -89,6 +89,68 @@ func TestResolveLauncherUsesConfiguredPathAfterDefaults(t *testing.T) {
 	}
 }
 
+func TestResolveLauncherUsesDefaultPath(t *testing.T) {
+	defaultPath := "/usr/local/bin/code"
+	got, err := ResolveLauncher(Options{
+		LookPath: func(string) (string, error) {
+			return "", os.ErrNotExist
+		},
+		Exists: func(path string) bool {
+			return path == defaultPath
+		},
+		GOOS: "linux",
+	})
+	if err != nil {
+		t.Fatalf("resolve launcher: %v", err)
+	}
+	if got != defaultPath {
+		t.Fatalf("launcher = %q, want %q", got, defaultPath)
+	}
+}
+
+func TestResolveLauncherFailsWhenNotFound(t *testing.T) {
+	_, err := ResolveLauncher(Options{
+		LookPath: func(string) (string, error) {
+			return "", os.ErrNotExist
+		},
+		Exists: func(string) bool {
+			return false
+		},
+		GOOS: "linux",
+	})
+	if err == nil {
+		t.Fatal("missing launcher resolved successfully")
+	}
+}
+
+func TestResolveLauncherUsesDefaultFileExists(t *testing.T) {
+	codePath := filepath.Join(t.TempDir(), "code")
+	if err := os.WriteFile(codePath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write code: %v", err)
+	}
+
+	got, err := ResolveLauncher(Options{
+		LookPath: func(string) (string, error) {
+			return codePath, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolve launcher: %v", err)
+	}
+	if got != codePath {
+		t.Fatalf("launcher = %q, want %q", got, codePath)
+	}
+}
+
+func TestFileExistsRejectsDirectoryAndMissingPath(t *testing.T) {
+	if fileExists(t.TempDir()) {
+		t.Fatal("directory detected as file")
+	}
+	if fileExists(filepath.Join(t.TempDir(), "missing")) {
+		t.Fatal("missing path detected as file")
+	}
+}
+
 func sameStrings(left, right []string) bool {
 	if len(left) != len(right) {
 		return false

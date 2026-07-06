@@ -56,6 +56,83 @@ func TestWriteSessionFilesRejectsMissingHostKey(t *testing.T) {
 	}
 }
 
+func TestWriteSessionFilesRejectsMissingRequiredFields(t *testing.T) {
+	tests := []struct {
+		name    string
+		options SessionOptions
+		want    string
+	}{
+		{
+			name: "directory",
+			options: SessionOptions{
+				Alias:     "dev01",
+				LocalHost: "127.0.0.1",
+				LocalPort: 55221,
+				HostKey:   hostKeyV1,
+			},
+			want: "directory",
+		},
+		{
+			name: "alias",
+			options: SessionOptions{
+				Dir:       t.TempDir(),
+				LocalHost: "127.0.0.1",
+				LocalPort: 55221,
+				HostKey:   hostKeyV1,
+			},
+			want: "alias",
+		},
+		{
+			name: "local host",
+			options: SessionOptions{
+				Dir:       t.TempDir(),
+				Alias:     "dev01",
+				LocalPort: 55221,
+				HostKey:   hostKeyV1,
+			},
+			want: "local host",
+		},
+		{
+			name: "local port",
+			options: SessionOptions{
+				Dir:       t.TempDir(),
+				Alias:     "dev01",
+				LocalHost: "127.0.0.1",
+				HostKey:   hostKeyV1,
+			},
+			want: "invalid local port",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := WriteSessionFiles(tt.options)
+			if err == nil {
+				t.Fatal("WriteSessionFiles accepted invalid options")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %q, want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestWriteSessionFilesWithoutUserOmitsUserLine(t *testing.T) {
+	files, err := WriteSessionFiles(SessionOptions{
+		Dir:       t.TempDir(),
+		Alias:     "dev01",
+		LocalHost: "127.0.0.1",
+		LocalPort: 55221,
+		HostKey:   hostKeyV1,
+	})
+	if err != nil {
+		t.Fatalf("write session files: %v", err)
+	}
+
+	configData := readFile(t, files.ConfigPath)
+	assertNotContains(t, configData, "  User ")
+}
+
 func TestWriteSessionFilesRotatesHostKey(t *testing.T) {
 	dir := t.TempDir()
 
@@ -110,6 +187,15 @@ func TestCleanupRemovesSessionFiles(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("%s still exists or unexpected stat error: %v", path, err)
 		}
+	}
+}
+
+func TestCleanupIgnoresMissingFilesAndEmptyPaths(t *testing.T) {
+	if err := Cleanup(SessionFiles{
+		ConfigPath:     filepath.Join(t.TempDir(), "missing_ssh_config"),
+		KnownHostsPath: "",
+	}); err != nil {
+		t.Fatalf("cleanup missing files: %v", err)
 	}
 }
 
