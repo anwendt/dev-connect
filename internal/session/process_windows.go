@@ -2,10 +2,17 @@
 
 package session
 
-// ProcessExists reports whether pid may refer to a running process.
-//
-// The first implementation is conservative on Windows to avoid deleting session
-// state for a process that cannot be inspected through the initial abstraction.
+import "golang.org/x/sys/windows"
+
+// ProcessExists reports whether pid currently refers to a running process.
 func ProcessExists(pid int) bool {
-	return pid > 0
+	if pid <= 0 {
+		return false
+	}
+	handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(pid))
+	if err != nil {
+		return false
+	}
+	_ = windows.CloseHandle(handle)
+	return true
 }

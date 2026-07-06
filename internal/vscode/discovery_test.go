@@ -15,6 +15,32 @@ func TestDefaultLauncherPathsMacOS(t *testing.T) {
 	}
 }
 
+func TestDefaultLauncherPathsWindows(t *testing.T) {
+	got := DefaultLauncherPaths("windows", `C:\Users\Alice\AppData\Local`)
+
+	want := []string{
+		`C:\Users\Alice\AppData\Local/Programs/Microsoft VS Code/bin/code.cmd`,
+		`C:\Program Files\Microsoft VS Code\bin\code.cmd`,
+		`C:\Program Files (x86)\Microsoft VS Code\bin\code.cmd`,
+	}
+	if !sameStrings(got, want) {
+		t.Fatalf("Windows launcher paths = %#v, want %#v", got, want)
+	}
+}
+
+func TestDefaultLauncherPathsLinux(t *testing.T) {
+	got := DefaultLauncherPaths("linux", "")
+
+	want := []string{
+		"/usr/bin/code",
+		"/usr/local/bin/code",
+		"/snap/bin/code",
+	}
+	if !sameStrings(got, want) {
+		t.Fatalf("Linux launcher paths = %#v, want %#v", got, want)
+	}
+}
+
 func TestResolveLauncherPrefersPath(t *testing.T) {
 	tempDir := t.TempDir()
 	codePath := filepath.Join(tempDir, "code")
@@ -61,4 +87,16 @@ func TestResolveLauncherUsesConfiguredPathAfterDefaults(t *testing.T) {
 	if got != configuredPath {
 		t.Fatalf("launcher = %q, want %q", got, configuredPath)
 	}
+}
+
+func sameStrings(left, right []string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
