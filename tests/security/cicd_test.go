@@ -110,6 +110,8 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"aquasecurity/setup-trivy",
 		"go install github.com/google/go-licenses@latest",
 		"actions/attest-build-provenance",
+		"gh release create",
+		"gh release upload",
 	} {
 		assertContains(t, release, required)
 	}
