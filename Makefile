@@ -62,7 +62,7 @@ test-e2e:
 test-performance-local:
 	GOCACHE=$(GO_CACHE) $(GO) test -bench=. ./cmd/... ./internal/...
 
-test: fmt-check test-unit test-security test-e2e
+test: fmt-check test-unit test-integration test-security test-e2e
 
 container-build:
 	@if command -v $(DOCKER) >/dev/null 2>&1; then \
@@ -116,7 +116,7 @@ sign:
 		printf '%s\n' 'cosign not installed; skipping sign in local slice.'; \
 	fi
 
-release-check: fmt-check lint test-unit test-security test-e2e helm-lint helm-template kustomize-build
+release-check: fmt-check lint test-unit test-integration test-security test-e2e helm-lint helm-template kustomize-build
 
 build:
 	GOCACHE=$(GO_CACHE) $(GO) build -buildvcs=false -o bin/dev-connect ./cmd/dev-connect
