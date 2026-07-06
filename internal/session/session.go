@@ -60,6 +60,21 @@ func (state State) IsStale(processExists func(pid int) bool) bool {
 	return !processExists(state.PortForwardPID)
 }
 
+// TerminateProcess attempts to stop a recorded session process.
+func TerminateProcess(pid int) error {
+	if pid <= 0 {
+		return nil
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("find process %d: %w", pid, err)
+	}
+	if err := process.Kill(); err != nil {
+		return fmt.Errorf("terminate process %d: %w", pid, err)
+	}
+	return nil
+}
+
 // Store manages local JSON session state.
 type Store struct {
 	Dir string

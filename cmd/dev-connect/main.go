@@ -23,6 +23,7 @@ import (
 	"github.com/anwendt/dev-connect/internal/proxy"
 	"github.com/anwendt/dev-connect/internal/session"
 	"github.com/anwendt/dev-connect/internal/sshconfig"
+	"github.com/anwendt/dev-connect/internal/tunnel"
 	"github.com/anwendt/dev-connect/internal/vscode"
 )
 
@@ -150,6 +151,21 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 
+			tunnelResult, err := startTunnel(cmd.Context(), *opts, cluster, result)
+			if err != nil {
+				_ = sshconfig.Cleanup(result.SSHFiles)
+				_ = (session.Store{Dir: result.SessionDir}).Clear()
+				return err
+			}
+			if tunnelResult.PID > 0 {
+				result.State.PortForwardPID = tunnelResult.PID
+				if err := (session.Store{Dir: result.SessionDir}).Save(result.State); err != nil {
+					_ = sshconfig.Cleanup(result.SSHFiles)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+			}
+
 			if !opts.noCode {
 				if err := launchVSCode(cmd.Context(), loaded.Config, args[0]); err != nil {
 					_ = sshconfig.Cleanup(result.SSHFiles)
@@ -167,6 +183,38 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, result connect.Result) (tunnel.Result, error) {
+	if opts.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.timeout)
+		defer cancel()
+	}
+
+	kubectlPath, err := kubectlPath()
+	if err != nil {
+		return tunnel.Result{}, err
+	}
+
+	runner := kubectl.ExecutableRunner{
+		Path: kubectlPath,
+		BaseEnv: proxy.BuildEnv(os.Environ(), proxy.Config{
+			Enabled:    cluster.Proxy.Enabled,
+			HTTPProxy:  cluster.Proxy.HTTPProxy,
+			HTTPSProxy: cluster.Proxy.HTTPSProxy,
+			NoProxy:    cluster.Proxy.NoProxy,
+		}),
+	}
+	return tunnel.Supervisor{Runner: runner, MaxReconnects: 3}.Start(ctx, tunnel.StartOptions{
+		Namespace:   result.Gateway.Namespace,
+		Service:     result.Gateway.Service,
+		LocalPort:   result.LocalPort,
+		RemotePort:  result.Gateway.Port,
+		ContextName: cluster.KubernetesContext,
+		Kubeconfig:  cluster.Kubeconfig,
+		Reconnect:   !opts.noReconnect,
+	})
 }
 
 func launchVSCode(ctx context.Context, cfg config.Config, targetAlias string) error {
@@ -302,6 +350,7 @@ func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 			if err == nil {
+				_ = session.TerminateProcess(state.PortForwardPID)
 				if cleanupErr := sshconfig.Cleanup(sshconfig.SessionFiles{
 					ConfigPath:     state.SSHConfigPath,
 					KnownHostsPath: state.KnownHostsPath,

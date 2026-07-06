@@ -227,6 +227,13 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); err != nil {
 		t.Fatalf("session state was not written: %v", err)
 	}
+	stateData, err := os.ReadFile(filepath.Join(sessionDir, "session.json"))
+	if err != nil {
+		t.Fatalf("read session state: %v", err)
+	}
+	if !strings.Contains(string(stateData), `"portForwardPid":`) {
+		t.Fatalf("session state does not contain portForwardPid:\n%s", string(stateData))
+	}
 	if _, err := os.Stat(filepath.Join(sshDir, "ssh_config")); err != nil {
 		t.Fatalf("ssh config was not written: %v", err)
 	}

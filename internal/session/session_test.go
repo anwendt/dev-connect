@@ -92,3 +92,9 @@ func TestStaleStateDetection(t *testing.T) {
 		t.Fatal("state with running PID is stale")
 	}
 }
+
+func TestTerminateProcessIgnoresEmptyPID(t *testing.T) {
+	if err := TerminateProcess(0); err != nil {
+		t.Fatalf("terminate empty PID: %v", err)
+	}
+}
