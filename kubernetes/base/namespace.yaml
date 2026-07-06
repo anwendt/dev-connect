@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-connect
+  labels:
+    app.kubernetes.io/name: dev-connect
+    app.kubernetes.io/part-of: dev-connect
+    app.kubernetes.io/managed-by: platform-gitops
+

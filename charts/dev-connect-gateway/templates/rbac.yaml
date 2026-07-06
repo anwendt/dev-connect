@@ -1,0 +1,36 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "dev-connect-gateway.fullname" . }}-user
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - pods
+      - endpoints
+    verbs:
+      - get
+      - list
+  - apiGroups:
+      - ""
+    resources:
+      - pods/portforward
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "dev-connect-gateway.fullname" . }}-users
+subjects:
+  - kind: Group
+    name: {{ .Values.rbac.userGroup }}
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: {{ include "dev-connect-gateway.fullname" . }}-user
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+

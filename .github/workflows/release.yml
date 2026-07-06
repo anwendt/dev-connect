@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+env:
+  IMAGE: ghcr.io/anwendt/dev-connect:${{ github.ref_name }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          check-latest: true
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@v2
+
+      - name: Set up Syft
+        uses: anchore/sbom-action/download-syft@v0.20.6
+
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+
+      - name: Release readiness
+        run: make release-check
+
+      - name: Build binary
+        run: make build
+
+      - name: Generate SBOM
+        run: make sbom
+
+      - name: Build container
+        run: make container-build
+
+      - name: Package Helm chart
+        run: make helm-package
+
+      - name: Sign artifacts
+        run: make sign
+
+      - name: Generate provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            bin/dev-connect
+            dist/*
+

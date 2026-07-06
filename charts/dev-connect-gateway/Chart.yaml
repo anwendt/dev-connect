@@ -1,0 +1,8 @@
+apiVersion: v2
+name: dev-connect-gateway
+description: TCP-only HAProxy gateway for dev-connect Remote SSH access
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.30.0-0"
+

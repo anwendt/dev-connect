@@ -1,0 +1,16 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dev-connect-gateway-dev01
+  namespace: dev-connect
+  labels:
+    app.kubernetes.io/name: dev-connect-gateway
+    app.kubernetes.io/instance: dev01
+    app.kubernetes.io/part-of: dev-connect
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dev-connect-gateway
+      app.kubernetes.io/instance: dev01
+

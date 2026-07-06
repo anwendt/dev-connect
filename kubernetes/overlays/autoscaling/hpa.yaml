@@ -1,0 +1,24 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dev-connect-gateway-dev01
+  namespace: dev-connect
+  labels:
+    app.kubernetes.io/name: dev-connect-gateway
+    app.kubernetes.io/instance: dev01
+    app.kubernetes.io/part-of: dev-connect
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dev-connect-gateway-dev01
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+

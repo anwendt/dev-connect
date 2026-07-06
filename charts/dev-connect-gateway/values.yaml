@@ -1,0 +1,44 @@
+nameOverride: ""
+fullnameOverride: ""
+
+target:
+  name: dev01
+  host: dev01.example.internal
+  port: 22
+
+image:
+  repository: haproxy
+  tag: 3.0-alpine
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 22
+  targetPort: 2222
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+rbac:
+  create: true
+  userGroup: dev-connect-users
+
+networkPolicy:
+  enabled: true
+  backendCIDR: 10.20.30.42/32
+  dnsEgress:
+    enabled: true
+

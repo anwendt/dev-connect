@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "dev-connect-gateway.fullname" . }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "dev-connect-gateway.name" . }}
+      app.kubernetes.io/instance: {{ .Values.target.name }}
+
