@@ -4,8 +4,8 @@ import (
 	"errors"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Options controls VS Code launcher resolution.
@@ -55,7 +55,7 @@ func DefaultLauncherPaths(goos, localAppData string) []string {
 	case "windows":
 		paths := []string{}
 		if localAppData != "" {
-			paths = append(paths, filepath.Join(localAppData, "Programs", "Microsoft VS Code", "bin", "code.cmd"))
+			paths = append(paths, strings.TrimRight(localAppData, `\/`)+`\Programs\Microsoft VS Code\bin\code.cmd`)
 		}
 		paths = append(paths,
 			`C:\Program Files\Microsoft VS Code\bin\code.cmd`,

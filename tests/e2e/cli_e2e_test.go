@@ -6,7 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
+
+	"github.com/anwendt/dev-connect/internal/session"
 )
 
 func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
@@ -153,6 +156,9 @@ func buildCLI(t *testing.T) string {
 
 	tempDir := t.TempDir()
 	binary := filepath.Join(tempDir, "dev-connect")
+	if runtime.GOOS == "windows" {
+		binary += ".exe"
+	}
 	cmd := exec.Command("go", "build", "-buildvcs=false", "-o", binary, "./cmd/dev-connect")
 	cmd.Dir = projectRoot(t)
 	cmd.Env = append(os.Environ(), "GOCACHE="+filepath.Join(projectRoot(t), ".cache", "go-build"))
@@ -204,16 +210,20 @@ func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath s
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
 		t.Fatalf("create session dir: %v", err)
 	}
-	data := []byte(`{
-  "sessionId": "session-1",
-  "target": "dev01",
-  "gateway": "dev01",
-  "namespace": "dev-connect",
-  "localPort": 55221,
-  "sshConfigPath": "` + sshConfigPath + `",
-  "knownHostsPath": "` + knownHostsPath + `",
-  "reconnect": false
-}`)
+	state := session.State{
+		SessionID:      "session-1",
+		Target:         "dev01",
+		Gateway:        "dev01",
+		Namespace:      "dev-connect",
+		LocalPort:      55221,
+		SSHConfigPath:  sshConfigPath,
+		KnownHostsPath: knownHostsPath,
+		Reconnect:      false,
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal session state: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(sessionDir, "session.json"), data, 0o600); err != nil {
 		t.Fatalf("write session state: %v", err)
 	}
@@ -254,6 +264,36 @@ hostKeys:
 
 func writeFakeKubectl(t *testing.T, canI string) string {
 	t.Helper()
+
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "kubectl.cmd")
+		script := `@echo off
+set args=%*
+echo %args% | findstr /C:"version" >nul
+if %errorlevel%==0 (
+  echo Client Version: v1.30.0
+  echo Server Version: v1.30.0
+  exit /b 0
+)
+echo %args% | findstr /C:"auth can-i create pods/portforward" >nul
+if %errorlevel%==0 (
+  echo ` + canI + `
+  exit /b 0
+)
+echo %args% | findstr /C:"port-forward" >nul
+if %errorlevel%==0 (
+  echo Forwarding from 127.0.0.1:55221 -^> 22
+  ping -n 6 127.0.0.1 >nul
+  exit /b 0
+)
+echo unexpected kubectl args: %args% 1>&2
+exit /b 9
+`
+		if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+			t.Fatalf("write fake kubectl: %v", err)
+		}
+		return path
+	}
 
 	path := filepath.Join(t.TempDir(), "kubectl")
 	script := `#!/bin/sh

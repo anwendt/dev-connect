@@ -3,6 +3,7 @@ package sshconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -113,6 +114,10 @@ func TestCleanupRemovesSessionFiles(t *testing.T) {
 }
 
 func TestSessionFilesUseRestrictivePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not reliable on Windows")
+	}
+
 	files, err := WriteSessionFiles(SessionOptions{
 		Dir:       t.TempDir(),
 		Alias:     "dev01",

@@ -237,6 +237,14 @@ func executablePath(path string) (string, error) {
 	if info.IsDir() {
 		return "", fmt.Errorf("%s is a directory", path)
 	}
+	if runtime.GOOS == "windows" {
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".exe", ".cmd", ".bat", ".com":
+			return path, nil
+		default:
+			return "", fmt.Errorf("%s is not a Windows executable", path)
+		}
+	}
 	if info.Mode().Perm()&0o111 == 0 {
 		return "", fmt.Errorf("%s is not executable", path)
 	}

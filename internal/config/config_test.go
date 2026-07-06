@@ -80,7 +80,7 @@ func TestDefaultDirForOS(t *testing.T) {
 	}{
 		{name: "macOS", goos: "darwin", home: "/Users/alice", want: "/Users/alice/Library/Application Support/dev-connect"},
 		{name: "Linux", goos: "linux", home: "/home/alice", want: "/home/alice/.config/dev-connect"},
-		{name: "Windows", goos: "windows", appData: `C:\Users\Alice\AppData\Roaming`, want: `C:\Users\Alice\AppData\Roaming/dev-connect`},
+		{name: "Windows", goos: "windows", appData: `C:\Users\Alice\AppData\Roaming`, want: `C:\Users\Alice\AppData\Roaming\dev-connect`},
 	}
 
 	for _, tt := range tests {

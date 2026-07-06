@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/anwendt/dev-connect/internal/session"
 )
 
 func TestRootCommandIncludesApprovedCommands(t *testing.T) {
@@ -192,18 +195,22 @@ func writeSessionStateData(t *testing.T, sessionDir, sshConfigPath, knownHostsPa
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
 		t.Fatalf("create session dir: %v", err)
 	}
-	data := []byte(`{
-  "sessionId": "session-1",
-  "target": "dev01",
-  "gateway": "dev01",
-  "namespace": "dev-connect",
-  "localPort": 55221,
-  "portForwardPid": ` + fmt.Sprint(portForwardPID) + `,
-  "sshConfigPath": "` + sshConfigPath + `",
-  "knownHostsPath": "` + knownHostsPath + `",
-  "vscodeUserDataDir": "` + vscodeUserDataDir + `",
-  "reconnect": false
-}`)
+	state := session.State{
+		SessionID:         "session-1",
+		Target:            "dev01",
+		Gateway:           "dev01",
+		Namespace:         "dev-connect",
+		LocalPort:         55221,
+		PortForwardPID:    portForwardPID,
+		SSHConfigPath:     sshConfigPath,
+		KnownHostsPath:    knownHostsPath,
+		VSCodeUserDataDir: vscodeUserDataDir,
+		Reconnect:         false,
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal session state: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(sessionDir, "session.json"), data, 0o600); err != nil {
 		t.Fatalf("write session state: %v", err)
 	}
@@ -286,6 +293,10 @@ func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
 }
 
 func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script fake VS Code launcher is not used on Windows")
+	}
+
 	launcherOutput := filepath.Join(t.TempDir(), "vscode-args.txt")
 	launcherPath := writeFakeCodeLauncher(t, launcherOutput)
 	configPath := writeCLIConfigWithVSCodeLauncher(t, launcherPath)
@@ -591,6 +602,36 @@ printf '%s\n' "$@" > "` + outputPath + `"
 
 func writeFakeKubectl(t *testing.T, canI string) string {
 	t.Helper()
+
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "kubectl.cmd")
+		script := `@echo off
+set args=%*
+echo %args% | findstr /C:"version" >nul
+if %errorlevel%==0 (
+  echo Client Version: v1.30.0
+  echo Server Version: v1.30.0
+  exit /b 0
+)
+echo %args% | findstr /C:"auth can-i create pods/portforward" >nul
+if %errorlevel%==0 (
+  echo ` + canI + `
+  exit /b 0
+)
+echo %args% | findstr /C:"port-forward" >nul
+if %errorlevel%==0 (
+  echo Forwarding from 127.0.0.1:55221 -^> 22
+  ping -n 6 127.0.0.1 >nul
+  exit /b 0
+)
+echo unexpected kubectl args: %args% 1>&2
+exit /b 9
+`
+		if err := os.WriteFile(path, []byte(script), 0o600); err != nil {
+			t.Fatalf("write fake kubectl: %v", err)
+		}
+		return path
+	}
 
 	path := filepath.Join(t.TempDir(), "kubectl")
 	script := `#!/bin/sh

@@ -78,8 +78,12 @@ func TestLockAllowsOneActiveSession(t *testing.T) {
 	if err := first.Release(); err != nil {
 		t.Fatalf("release first lock: %v", err)
 	}
-	if _, err := AcquireLock(lockPath); err != nil {
+	second, err := AcquireLock(lockPath)
+	if err != nil {
 		t.Fatalf("acquire after release: %v", err)
+	}
+	if err := second.Release(); err != nil {
+		t.Fatalf("release second lock: %v", err)
 	}
 }
 

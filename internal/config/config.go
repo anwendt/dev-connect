@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"sigs.k8s.io/yaml"
 )
@@ -218,16 +219,16 @@ func DefaultDirFor(goos, home, appData string) (string, error) {
 		if appData == "" {
 			return "", errors.New("APPDATA is required on Windows")
 		}
-		return filepath.Join(appData, "dev-connect"), nil
+		return strings.TrimRight(appData, `\/`) + `\dev-connect`, nil
 	case "darwin":
 		if home == "" {
 			return "", errors.New("HOME is required on macOS")
 		}
-		return filepath.Join(home, "Library", "Application Support", "dev-connect"), nil
+		return strings.TrimRight(home, "/") + "/Library/Application Support/dev-connect", nil
 	default:
 		if home == "" {
 			return "", errors.New("HOME is required")
 		}
-		return filepath.Join(home, ".config", "dev-connect"), nil
+		return strings.TrimRight(home, "/") + "/.config/dev-connect", nil
 	}
 }

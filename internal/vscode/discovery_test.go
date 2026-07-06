@@ -19,7 +19,7 @@ func TestDefaultLauncherPathsWindows(t *testing.T) {
 	got := DefaultLauncherPaths("windows", `C:\Users\Alice\AppData\Local`)
 
 	want := []string{
-		`C:\Users\Alice\AppData\Local/Programs/Microsoft VS Code/bin/code.cmd`,
+		`C:\Users\Alice\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd`,
 		`C:\Program Files\Microsoft VS Code\bin\code.cmd`,
 		`C:\Program Files (x86)\Microsoft VS Code\bin\code.cmd`,
 	}
