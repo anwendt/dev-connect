@@ -120,17 +120,19 @@ exit 7
 func TestExecutableRunnerRunsUntilReadyAndStopsLongRunningProcess(t *testing.T) {
 	binDir := t.TempDir()
 	markerPath := filepath.Join(t.TempDir(), "completed")
+	readyMarkerPath := filepath.Join(t.TempDir(), "ready")
 	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
 trap 'exit 0' TERM
 echo "starting"
 echo "Forwarding from 127.0.0.1:55221 -> 22"
+echo "ready" > "$READY_MARKER_PATH"
 sleep 30
 echo "completed" > "$MARKER_PATH"
 `))
 
 	runner := ExecutableRunner{
 		Path:    kubectlPath,
-		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath},
+		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath, "READY_MARKER_PATH=" + readyMarkerPath},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -141,8 +143,8 @@ echo "completed" > "$MARKER_PATH"
 	if err != nil {
 		t.Fatalf("run until ready: %v", err)
 	}
-	if !strings.Contains(result.Stdout, "Forwarding from 127.0.0.1:55221 -> 22") {
-		t.Fatalf("stdout missing readiness output: %q", result.Stdout)
+	if _, err := os.Stat(readyMarkerPath); err != nil {
+		t.Fatalf("readiness was not reached before return; stdout=%q stderr=%q err=%v", result.Stdout, result.Stderr, err)
 	}
 	if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
 		t.Fatalf("long-running process was not stopped after readiness: %v", err)
