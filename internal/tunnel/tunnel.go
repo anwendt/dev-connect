@@ -23,6 +23,7 @@ type StartOptions struct {
 type Result struct {
 	Ready    bool
 	Attempts int
+	PID      int
 }
 
 // Supervisor starts kubectl port-forward through an injected runner.
@@ -56,6 +57,14 @@ func (supervisor Supervisor) Start(ctx context.Context, options StartOptions) (R
 
 	var lastErr error
 	for attempt := 1; attempt <= attemptsAllowed; attempt++ {
+		if backgroundRunner, ok := supervisor.Runner.(kubectl.BackgroundRunner); ok {
+			started, err := backgroundRunner.StartUntilReady(ctx, command, IsReadyOutput)
+			if err == nil {
+				return Result{Ready: true, Attempts: attempt, PID: started.PID}, nil
+			}
+			lastErr = err
+			continue
+		}
 		result, err := supervisor.Runner.Run(ctx, command)
 		if err == nil {
 			return Result{Ready: IsReadyOutput(result.Stdout), Attempts: attempt}, nil

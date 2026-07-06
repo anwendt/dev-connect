@@ -31,6 +31,18 @@ type ReadyRunner interface {
 	RunUntilReady(ctx context.Context, command Command, ready ReadyFunc) (Result, error)
 }
 
+// StartedProcess describes a kubectl process that remains running after readiness.
+type StartedProcess struct {
+	PID    int
+	Stdout string
+	Stderr string
+}
+
+// BackgroundRunner starts kubectl commands that remain running after readiness.
+type BackgroundRunner interface {
+	StartUntilReady(ctx context.Context, command Command, ready ReadyFunc) (StartedProcess, error)
+}
+
 // ExitError describes a kubectl command that exited unsuccessfully.
 type ExitError struct {
 	Code   int

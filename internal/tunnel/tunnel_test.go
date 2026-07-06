@@ -40,6 +40,34 @@ func TestSupervisorStartsPortForwardWithFakeKubectl(t *testing.T) {
 	}
 }
 
+func TestSupervisorStartsBackgroundPortForwardWhenSupported(t *testing.T) {
+	runner := &fakeBackgroundRunner{
+		started: kubectl.StartedProcess{
+			PID:    4242,
+			Stdout: "Forwarding from 127.0.0.1:55221 -> 22\n",
+		},
+	}
+	supervisor := Supervisor{Runner: runner}
+
+	result, err := supervisor.Start(context.Background(), StartOptions{
+		Namespace:  "dev-connect",
+		Service:    "dev-connect-gateway-dev01",
+		LocalPort:  55221,
+		RemotePort: 22,
+		Reconnect:  true,
+	})
+	if err != nil {
+		t.Fatalf("start tunnel: %v", err)
+	}
+
+	if !result.Ready || result.PID != 4242 {
+		t.Fatalf("result = %#v, want ready PID 4242", result)
+	}
+	if !runner.startCalled {
+		t.Fatal("StartUntilReady was not called")
+	}
+}
+
 func TestSupervisorReconnectsOnceAfterTransientFailure(t *testing.T) {
 	runner := kubectl.NewFakeRunner(
 		kubectl.FakeResult{Stderr: "temporary failure", ExitCode: 1},
@@ -61,6 +89,23 @@ func TestSupervisorReconnectsOnceAfterTransientFailure(t *testing.T) {
 	if !result.Ready || result.Attempts != 2 {
 		t.Fatalf("result = %#v, want ready after 2 attempts", result)
 	}
+}
+
+type fakeBackgroundRunner struct {
+	started     kubectl.StartedProcess
+	startCalled bool
+}
+
+func (runner *fakeBackgroundRunner) Run(context.Context, kubectl.Command) (kubectl.Result, error) {
+	return kubectl.Result{}, errors.New("Run should not be called")
+}
+
+func (runner *fakeBackgroundRunner) StartUntilReady(_ context.Context, _ kubectl.Command, ready kubectl.ReadyFunc) (kubectl.StartedProcess, error) {
+	runner.startCalled = true
+	if !ready(runner.started.Stdout) {
+		return kubectl.StartedProcess{}, errors.New("not ready")
+	}
+	return runner.started, nil
 }
 
 func TestSupervisorDoesNotReconnectWhenDisabled(t *testing.T) {

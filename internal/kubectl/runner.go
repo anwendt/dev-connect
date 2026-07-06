@@ -151,6 +151,84 @@ func (runner ExecutableRunner) RunUntilReady(ctx context.Context, command Comman
 	}
 }
 
+// StartUntilReady starts kubectl and leaves it running after readiness is detected.
+func (runner ExecutableRunner) StartUntilReady(ctx context.Context, command Command, ready ReadyFunc) (StartedProcess, error) {
+	if ready == nil {
+		return StartedProcess{}, errors.New("ready function is required")
+	}
+	kubectlPath := runner.Path
+	if kubectlPath == "" {
+		return StartedProcess{}, errors.New("kubectl path is required")
+	}
+
+	cmd := exec.CommandContext(ctx, kubectlPath, command.Args...)
+	cmd.Env = mergeEnv(runner.baseEnv(), command.Env)
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return StartedProcess{}, fmt.Errorf("open kubectl stdout pipe: %w", err)
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return StartedProcess{}, fmt.Errorf("open kubectl stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return StartedProcess{}, fmt.Errorf("start kubectl: %w", err)
+	}
+
+	events := make(chan outputEvent, 2)
+	go scanOutput(stdoutPipe, streamStdout, events)
+	go scanOutput(stderrPipe, streamStderr, events)
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	for {
+		select {
+		case event := <-events:
+			if event.err != nil {
+				continue
+			}
+			switch event.stream {
+			case streamStdout:
+				stdout.WriteString(event.line)
+				stdout.WriteByte('\n')
+			case streamStderr:
+				stderr.WriteString(event.line)
+				stderr.WriteByte('\n')
+			}
+			if ready(event.line) {
+				return StartedProcess{
+					PID:    cmd.Process.Pid,
+					Stdout: stdout.String(),
+					Stderr: stderr.String(),
+				}, nil
+			}
+		case err := <-waitCh:
+			result := Result{
+				Stdout:   stdout.String(),
+				Stderr:   stderr.String(),
+				ExitCode: exitCode(err),
+			}
+			if err != nil {
+				if result.ExitCode >= 0 {
+					return StartedProcess{}, ExitError{Code: result.ExitCode, Stderr: result.Stderr}
+				}
+				return StartedProcess{}, fmt.Errorf("start kubectl until ready: %w", err)
+			}
+			return StartedProcess{}, errors.New("kubectl exited before readiness")
+		case <-ctx.Done():
+			stopProcess(cmd)
+			<-waitCh
+			return StartedProcess{}, ctx.Err()
+		}
+	}
+}
+
 func executablePath(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {

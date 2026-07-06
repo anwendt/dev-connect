@@ -186,6 +186,71 @@ func TestExecutableRunnerRunUntilReadyRequiresReadyFunc(t *testing.T) {
 	}
 }
 
+func TestExecutableRunnerStartsBackgroundProcessUntilReady(t *testing.T) {
+	binDir := t.TempDir()
+	markerPath := filepath.Join(t.TempDir(), "completed")
+	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
+trap 'exit 0' TERM
+echo "Forwarding from 127.0.0.1:55221 -> 22"
+sleep 30
+echo "completed" > "$MARKER_PATH"
+`))
+
+	runner := ExecutableRunner{
+		Path:    kubectlPath,
+		BaseEnv: []string{"PATH=" + binDir, "MARKER_PATH=" + markerPath},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	started, err := runner.StartUntilReady(ctx, Command{}, func(output string) bool {
+		return strings.Contains(output, "Forwarding from ")
+	})
+	if err != nil {
+		t.Fatalf("start until ready: %v", err)
+	}
+	if started.PID <= 0 {
+		t.Fatalf("pid = %d, want positive PID", started.PID)
+	}
+	if !strings.Contains(started.Stdout, "Forwarding from ") {
+		t.Fatalf("stdout = %q, want readiness output", started.Stdout)
+	}
+	process, err := os.FindProcess(started.PID)
+	if err == nil {
+		_ = process.Kill()
+	}
+	if _, err := os.Stat(markerPath); !os.IsNotExist(err) {
+		t.Fatalf("background process completed unexpectedly: %v", err)
+	}
+}
+
+func TestExecutableRunnerStartUntilReadyReturnsExitErrorBeforeReadiness(t *testing.T) {
+	binDir := t.TempDir()
+	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
+echo "failed before ready" >&2
+exit 5
+`))
+
+	runner := ExecutableRunner{
+		Path:    kubectlPath,
+		BaseEnv: []string{"PATH=" + binDir},
+	}
+
+	_, err := runner.StartUntilReady(context.Background(), Command{}, func(output string) bool {
+		return strings.Contains(output, "Forwarding from ")
+	})
+	if err == nil {
+		t.Fatal("failing kubectl succeeded")
+	}
+	var exitErr ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error = %T, want ExitError", err)
+	}
+	if exitErr.Code != 5 {
+		t.Fatalf("exit code = %d, want 5", exitErr.Code)
+	}
+}
+
 func TestExecutableRunnerRequiresKubectlPath(t *testing.T) {
 	runner := ExecutableRunner{Path: filepath.Join(t.TempDir(), "missing-kubectl")}
 
