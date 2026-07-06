@@ -15,6 +15,7 @@ Phase 10 is documentation only. It does not create Go implementation files, test
 - [Configuration Guide](guides/configuration-guide.md)
 - [Troubleshooting Guide](guides/troubleshooting-guide.md)
 - [Security Guide](guides/security-guide.md)
+- [Operations Runbook](runbooks/operations-runbook.md)
 - [API Documentation](api/api-documentation.md)
 - [Sequence Diagrams](sequence-diagrams.md)
 - [Deployment Diagrams](deployment-diagrams.md)
@@ -32,4 +33,3 @@ The guides are derived from approved phase artifacts:
 - `testing/testing-strategy.md`
 - `repository-structure.md`
 - `ci-cd/ci-cd-design.md`
-

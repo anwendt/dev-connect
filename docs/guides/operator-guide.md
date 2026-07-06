@@ -6,6 +6,9 @@ Status: Implementation guide
 
 This guide describes the operational responsibilities for running `dev-connect` gateways on Kubernetes.
 
+For step-by-step operational procedures, use the
+[Operations Runbook](../runbooks/operations-runbook.md).
+
 ## Operator Responsibilities
 
 Platform operators manage:
