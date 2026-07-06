@@ -85,10 +85,16 @@ jobs:
         run: make sign
 
       - name: Generate provenance
+        if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*
+
+      - name: Skip provenance for private repository
+        if: ${{ github.event.repository.private }}
+        run: |
+          echo "GitHub artifact attestations are not available for user-owned private repositories; skipping provenance generation."
 
       - name: Publish GitHub release artifacts
         env:

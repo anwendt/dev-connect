@@ -19,6 +19,8 @@ HELM_REGISTRY ?= oci://ghcr.io/anwendt/charts
 HELM_REGISTRY_HOST ?= ghcr.io
 HELM_REGISTRY_USERNAME ?= $(GITHUB_ACTOR)
 HELM_REGISTRY_PASSWORD ?= $(GITHUB_TOKEN)
+HELM_CHART_NAME ?= dev-connect-gateway
+HELM_CHART_VERSION ?= $(shell awk -F': *' '/^version:/ { gsub(/"/, "", $$2); print $$2 }' charts/dev-connect-gateway/Chart.yaml)
 VERSION ?= dev
 
 help:
@@ -153,6 +155,10 @@ helm-push: helm-package
 		exit 1; \
 	fi
 	@printf '%s' "$(HELM_REGISTRY_PASSWORD)" | $(HELM) registry login $(HELM_REGISTRY_HOST) --username "$(HELM_REGISTRY_USERNAME)" --password-stdin
+	@if $(HELM) show chart "$(HELM_REGISTRY)/$(HELM_CHART_NAME)" --version "$(HELM_CHART_VERSION)" >/dev/null 2>&1; then \
+		printf 'Helm chart %s/%s version %s already exists; skipping helm-push.\n' "$(HELM_REGISTRY)" "$(HELM_CHART_NAME)" "$(HELM_CHART_VERSION)"; \
+		exit 0; \
+	fi
 	@chart="$$(ls dist/dev-connect-gateway-*.tgz | head -n 1)"; \
 	if [ -z "$$chart" ]; then \
 		printf '%s\n' 'no packaged Helm chart found in dist/'; \

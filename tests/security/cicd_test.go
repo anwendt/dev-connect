@@ -114,6 +114,8 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"aquasecurity/setup-trivy",
 		"go install github.com/google/go-licenses@latest",
 		"actions/attest-build-provenance",
+		"!github.event.repository.private",
+		"GitHub artifact attestations are not available for user-owned private repositories",
 		"CONTAINER_REGISTRY_PASSWORD",
 		"HELM_REGISTRY_PASSWORD",
 		"gh release create",
