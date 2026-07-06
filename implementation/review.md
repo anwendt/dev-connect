@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: VS Code Remote SSH launcher foundation completed
+Status: Managed tunnel and CLI lifecycle foundation completed
 
 ## Scope
 
@@ -582,3 +582,105 @@ Notes:
 
 - VS Code launch still uses VS Code Desktop, not browser-based VS Code.
 - GitHub Copilot and local VS Code extensions remain local because the desktop `code` launcher is used.
+
+## CLI Session Lifecycle Result
+
+Implemented session lifecycle artifacts:
+
+- Session state now records generated SSH artifact paths:
+  - `sshConfigPath`,
+  - `knownHostsPath`.
+- `dev-connect disconnect` now:
+  - loads local session state,
+  - terminates the recorded port-forward process when present,
+  - removes generated `ssh_config`,
+  - removes generated `known_hosts`,
+  - removes local `session.json`.
+- `dev-connect status` now reports active local session metadata:
+  - target,
+  - session ID,
+  - local port.
+- `dev-connect list` now loads the YAML configuration and returns configured targets through the versioned JSON API.
+- `dev-connect connect` now rejects a new connection when an existing managed session state is present.
+
+Verification:
+
+- `make test`: passed for each lifecycle slice.
+- `make lint`: passed with `golangci-lint` 2.12.2 for each lifecycle slice.
+- `make build`: passed for each lifecycle slice.
+
+Notes:
+
+- Session state remains metadata-only and does not store credentials.
+- `disconnect` cleanup is idempotent when no session exists.
+- The first-release one-session model is enforced by local session state.
+
+## Config Reference Hardening Result
+
+Implemented configuration hardening artifacts:
+
+- Contexts now validate referenced cluster names.
+- Contexts now validate referenced gateway names.
+- Missing context cluster or gateway fields fail during configuration parsing.
+- Invalid references fail before any external process starts.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+## Managed Tunnel Startup Result
+
+Implemented managed tunnel artifacts:
+
+- `kubectl.BackgroundRunner` interface.
+- `kubectl.ExecutableRunner.StartUntilReady` for long-running kubectl commands that remain active after readiness.
+- `tunnel.Supervisor` now starts a persistent background port-forward when the runner supports it.
+- `dev-connect connect` now starts the managed tunnel after successful preflight.
+- The resulting port-forward PID is persisted in session state.
+- `dev-connect disconnect` terminates the recorded PID during cleanup.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- The client still starts Kubernetes tunnels exclusively through local `kubectl`.
+- The CLI does not kill unrelated kubectl processes; cleanup is based on the recorded session PID.
+
+## Redacted Structured Logging Result
+
+Implemented logging artifacts:
+
+- `internal/logging` package using Go standard library `log/slog`.
+- Text and JSON log formats.
+- Log levels:
+  - debug,
+  - info,
+  - warn,
+  - error.
+- Redaction of sensitive attributes by key, including:
+  - passwords,
+  - tokens,
+  - bearer values,
+  - authorization values,
+  - private keys,
+  - kubeconfig content,
+  - credentials,
+  - secrets.
+- Tests verify metadata is preserved and sensitive values are redacted.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- Logs are metadata-only by design.
+- The logging package does not enforce retention; retention remains the responsibility of the centralized enterprise logging backend.
