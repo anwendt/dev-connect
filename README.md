@@ -32,3 +32,12 @@ make build-all VERSION=dev
 make helm-template
 make kustomize-build
 ```
+
+Validated client configuration examples are available in:
+
+```text
+examples/config/
+```
+
+The examples include a minimal `dev01` setup, `kubectl` proxy override settings,
+and a multi-cluster configuration.

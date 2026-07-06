@@ -86,6 +86,15 @@ vscode:
   launcherPath: ""
 ```
 
+Validated examples are available under:
+
+```text
+examples/config/
+```
+
+The examples cover a minimal single-target setup, process-scoped proxy overrides
+for `kubectl`, and a multi-cluster configuration.
+
 ## Proxy Overrides
 
 By default, `kubectl` inherits the user's normal environment and enterprise proxy behavior.
@@ -99,6 +108,54 @@ Proxy overrides shall not modify:
 - kubeconfig,
 - shell profiles,
 - persistent environment variables.
+
+Example:
+
+```yaml
+clusters:
+  central-dev:
+    kubeconfig: /Users/andreswendt/.kube/central-dev-cluster.yaml
+    kubernetesContext: ""
+    proxy:
+      enabled: true
+      httpProxy: http://proxy.example.corp:8080
+      httpsProxy: http://proxy.example.corp:8080
+      noProxy: 127.0.0.1,localhost,.svc,.cluster.local,172.28.0.0/16
+```
+
+This override is applied only to the `kubectl` process used for preflight checks
+and `kubectl port-forward`. It does not affect VS Code, SSH, the user's shell, or
+the operating system proxy configuration.
+
+If the enterprise workstation proxy configuration already works for `kubectl`,
+leave the override disabled:
+
+```yaml
+proxy:
+  enabled: false
+```
+
+Do not put proxy credentials into the configuration file. Use the enterprise
+proxy mechanism already configured on the workstation or an approved secret
+handling mechanism outside `dev-connect`.
+
+## Pinned Host Keys
+
+Every target must reference an approved pinned SSH host key:
+
+```yaml
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    hostKeyRef: dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+```
+
+The host key value must come from the enterprise GitOps host key inventory. The
+client writes the key into a temporary `known_hosts` file and keeps
+`StrictHostKeyChecking yes`.
 
 ## VS Code Launcher Discovery
 

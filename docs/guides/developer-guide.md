@@ -63,6 +63,22 @@ Machine-readable output:
 dev-connect --output json config validate
 ```
 
+Validate a specific file:
+
+```text
+dev-connect --config examples/config/dev01-basic.yaml config validate
+```
+
+Use a configuration that includes a process-scoped proxy override for `kubectl`:
+
+```text
+dev-connect --config examples/config/dev01-proxy.yaml connect dev01
+```
+
+The proxy override affects only the `kubectl` process started by `dev-connect`.
+It does not change VS Code, SSH, kubeconfig, shell profiles, or operating system
+proxy settings.
+
 ## Disconnect
 
 ```text

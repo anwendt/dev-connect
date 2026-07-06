@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -288,6 +289,29 @@ gateways:
 	}
 	if os.Getenv("HTTPS_PROXY") != "http://enterprise-proxy.example" {
 		t.Fatalf("environment mutated, HTTPS_PROXY=%q", os.Getenv("HTTPS_PROXY"))
+	}
+}
+
+func TestExamplesParse(t *testing.T) {
+	examplesDir := filepath.Join("..", "..", "examples", "config")
+	entries, err := os.ReadDir(examplesDir)
+	if err != nil {
+		t.Fatalf("read examples directory: %v", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+			continue
+		}
+		t.Run(entry.Name(), func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join(examplesDir, entry.Name()))
+			if err != nil {
+				t.Fatalf("read example: %v", err)
+			}
+			if _, err := Parse(data); err != nil {
+				t.Fatalf("parse example: %v", err)
+			}
+		})
 	}
 }
 

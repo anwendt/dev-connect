@@ -1,0 +1,46 @@
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+contexts:
+  central-dev:
+    cluster: central-dev
+    gateway: dev01
+  central-test:
+    cluster: central-test
+    gateway: dev02
+clusters:
+  central-dev:
+    kubeconfig: /Users/andreswendt/.kube/central-dev-cluster.yaml
+    kubernetesContext: ""
+    proxy:
+      enabled: true
+      httpProxy: http://dev-proxy.example.corp:8080
+      httpsProxy: http://dev-proxy.example.corp:8080
+      noProxy: 127.0.0.1,localhost,.svc,.cluster.local,172.28.0.0/16
+  central-test:
+    kubeconfig: /Users/andreswendt/.kube/central-test-cluster.yaml
+    kubernetesContext: ""
+    proxy:
+      enabled: false
+gateways:
+  dev01:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev01
+    port: 22
+  dev02:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev02
+    port: 22
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    hostKeyRef: dev01
+  dev02:
+    gateway: dev02
+    user: developer
+    hostKeyRef: dev02
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+  dev02: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAISecondExamplePinnedHostKeyReplaceFromGitOpsInventory dev02
+vscode:
+  launcherPath: ""
