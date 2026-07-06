@@ -165,6 +165,27 @@ func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
 	}
 }
 
+func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
+	launcherOutput := filepath.Join(t.TempDir(), "vscode-args.txt")
+	launcherPath := writeFakeCodeLauncher(t, launcherOutput)
+	configPath := writeCLIConfigWithVSCodeLauncher(t, launcherPath)
+	t.Setenv("DEV_CONNECT_CODE_PATH", launcherPath)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	_ = executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-reconnect", "--output", "json")
+
+	data, err := os.ReadFile(launcherOutput)
+	if err != nil {
+		t.Fatalf("read fake VS Code launcher output: %v", err)
+	}
+	if strings.TrimSpace(string(data)) != "--remote\nssh-remote+dev01" {
+		t.Fatalf("VS Code launcher args = %q", string(data))
+	}
+}
+
 func TestConnectFailsBeforeSideEffectsWhenConfigInvalid(t *testing.T) {
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "dev-connect.yaml")
@@ -256,6 +277,21 @@ func TestInvalidOutputFlagFails(t *testing.T) {
 func writeCLIConfig(t *testing.T) string {
 	t.Helper()
 
+	return writeCLIConfigData(t, "")
+}
+
+func writeCLIConfigWithVSCodeLauncher(t *testing.T, launcherPath string) string {
+	t.Helper()
+
+	return writeCLIConfigData(t, `
+vscode:
+  launcherPath: `+launcherPath+`
+`)
+}
+
+func writeCLIConfigData(t *testing.T, suffix string) string {
+	t.Helper()
+
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "dev-connect.yaml")
 	data := []byte(`
@@ -279,11 +315,24 @@ gateways:
     port: 22
 hostKeys:
   dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
-`)
+` + suffix)
 	if err := os.WriteFile(configPath, data, 0o600); err != nil {
 		t.Fatalf("write config: %v", err)
 	}
 	return configPath
+}
+
+func writeFakeCodeLauncher(t *testing.T, outputPath string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "code")
+	script := `#!/bin/sh
+printf '%s\n' "$@" > "` + outputPath + `"
+`
+	if err := os.WriteFile(path, []byte(script), 0o700); err != nil {
+		t.Fatalf("write fake VS Code launcher: %v", err)
+	}
+	return path
 }
 
 func writeFakeKubectl(t *testing.T, canI string) string {

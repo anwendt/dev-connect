@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: kubectl port-forward readiness probe completed
+Status: VS Code Remote SSH launcher foundation completed
 
 ## Scope
 
@@ -556,3 +556,29 @@ Notes:
 
 - This fixes the production behavior where real `kubectl port-forward` is a long-running process.
 - The implementation still executes only the local `kubectl` binary and does not introduce direct Kubernetes API clients.
+
+## VS Code Remote SSH Launcher Foundation Result
+
+Implemented VS Code launch artifacts:
+
+- `vscode.Launcher` interface.
+- `vscode.ExecutableLauncher` for invoking the local VS Code Desktop launcher.
+- Remote SSH argument generation for `code --remote ssh-remote+<target>`.
+- Launcher exit error mapping with stderr capture.
+- CLI integration:
+  - `--no-code` continues to skip VS Code launch,
+  - without `--no-code`, the CLI resolves and invokes VS Code after successful preflight,
+  - `DEV_CONNECT_CODE_PATH` provides a deterministic process-local launcher override for tests and controlled environments.
+- Unit tests verify VS Code launcher arguments and failure handling.
+- CLI tests verify fake VS Code launcher execution without requiring a real VS Code installation.
+
+Verification:
+
+- `make test`: passed.
+- `make lint`: passed with `golangci-lint` 2.12.2.
+- `make build`: passed.
+
+Notes:
+
+- VS Code launch still uses VS Code Desktop, not browser-based VS Code.
+- GitHub Copilot and local VS Code extensions remain local because the desktop `code` launcher is used.

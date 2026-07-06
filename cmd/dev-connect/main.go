@@ -21,6 +21,7 @@ import (
 	"github.com/anwendt/dev-connect/internal/proxy"
 	"github.com/anwendt/dev-connect/internal/session"
 	"github.com/anwendt/dev-connect/internal/sshconfig"
+	"github.com/anwendt/dev-connect/internal/vscode"
 )
 
 type cliOptions struct {
@@ -147,6 +148,14 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 
+			if !opts.noCode {
+				if err := launchVSCode(cmd.Context(), loaded.Config, args[0]); err != nil {
+					_ = sshconfig.Cleanup(result.SSHFiles)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+			}
+
 			response := output.Response{
 				Status:    "Prepared",
 				Server:    args[0],
@@ -156,6 +165,20 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func launchVSCode(ctx context.Context, cfg config.Config, targetAlias string) error {
+	if path := os.Getenv("DEV_CONNECT_CODE_PATH"); path != "" {
+		return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{TargetAlias: targetAlias})
+	}
+	path, err := vscode.ResolveLauncher(vscode.Options{
+		LocalAppData:   os.Getenv("LOCALAPPDATA"),
+		ConfiguredPath: cfg.VSCode.LauncherPath,
+	})
+	if err != nil {
+		return err
+	}
+	return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{TargetAlias: targetAlias})
 }
 
 func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, result connect.Result) error {
