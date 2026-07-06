@@ -267,6 +267,7 @@ case "$*" in
     ;;
   *"port-forward"*)
     echo "Forwarding from 127.0.0.1:55221 -> 22"
+    sleep 5
     ;;
   *)
     echo "unexpected kubectl args: $*" >&2
