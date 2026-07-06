@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -290,6 +291,26 @@ func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 		Short: "Disconnect the managed dev-connect session",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			sessionDir, err := sessionDir()
+			if err != nil {
+				return err
+			}
+			store := session.Store{Dir: sessionDir}
+			state, err := store.Load()
+			if err != nil && !errors.Is(err, session.ErrNotFound) {
+				return err
+			}
+			if err == nil {
+				if cleanupErr := sshconfig.Cleanup(sshconfig.SessionFiles{
+					ConfigPath:     state.SSHConfigPath,
+					KnownHostsPath: state.KnownHostsPath,
+				}); cleanupErr != nil {
+					return cleanupErr
+				}
+			}
+			if err := store.Clear(); err != nil {
+				return err
+			}
 			return writeResponse(cmd, opts, output.Response{Status: "Disconnected"})
 		},
 	}

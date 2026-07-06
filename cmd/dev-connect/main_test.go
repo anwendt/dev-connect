@@ -84,6 +84,41 @@ func TestStatusOutputsVersionedJSON(t *testing.T) {
 	}
 }
 
+func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
+	sessionDir := t.TempDir()
+	sshConfigPath := filepath.Join(t.TempDir(), "ssh_config")
+	knownHostsPath := filepath.Join(t.TempDir(), "known_hosts")
+	if err := os.WriteFile(sshConfigPath, []byte("Host dev01\n"), 0o600); err != nil {
+		t.Fatalf("write ssh config: %v", err)
+	}
+	if err := os.WriteFile(knownHostsPath, []byte("host key\n"), 0o600); err != nil {
+		t.Fatalf("write known hosts: %v", err)
+	}
+	writeSessionState(t, sessionDir, sshConfigPath, knownHostsPath)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+
+	stdout := executeCommand(t, "disconnect", "--output", "json")
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Disconnected" {
+		t.Fatalf("status = %v, want Disconnected", got["status"])
+	}
+	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("%s still exists or unexpected stat error: %v", path, err)
+		}
+	}
+}
+
+func TestDisconnectWithoutSessionIsIdempotent(t *testing.T) {
+	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+
+	stdout := executeCommand(t, "disconnect", "--output", "json")
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Disconnected" {
+		t.Fatalf("status = %v, want Disconnected", got["status"])
+	}
+}
+
 func TestListOutputsVersionedJSON(t *testing.T) {
 	stdout := executeCommand(t, "--output", "json", "list")
 
@@ -93,6 +128,27 @@ func TestListOutputsVersionedJSON(t *testing.T) {
 	}
 	if got["status"] != "ok" {
 		t.Fatalf("status = %v, want ok", got["status"])
+	}
+}
+
+func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string) {
+	t.Helper()
+
+	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
+		t.Fatalf("create session dir: %v", err)
+	}
+	data := []byte(`{
+  "sessionId": "session-1",
+  "target": "dev01",
+  "gateway": "dev01",
+  "namespace": "dev-connect",
+  "localPort": 55221,
+  "sshConfigPath": "` + sshConfigPath + `",
+  "knownHostsPath": "` + knownHostsPath + `",
+  "reconnect": false
+}`)
+	if err := os.WriteFile(filepath.Join(sessionDir, "session.json"), data, 0o600); err != nil {
+		t.Fatalf("write session state: %v", err)
 	}
 }
 
