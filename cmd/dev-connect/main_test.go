@@ -84,6 +84,27 @@ func TestStatusOutputsVersionedJSON(t *testing.T) {
 	}
 }
 
+func TestStatusReportsActiveSession(t *testing.T) {
+	sessionDir := t.TempDir()
+	writeSessionState(t, sessionDir, "/tmp/ssh_config", "/tmp/known_hosts")
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+
+	stdout := executeCommand(t, "status", "--output", "json")
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Connected" {
+		t.Fatalf("status = %v, want Connected", got["status"])
+	}
+	if got["server"] != "dev01" {
+		t.Fatalf("server = %v, want dev01", got["server"])
+	}
+	if got["sessionId"] != "session-1" {
+		t.Fatalf("sessionId = %v, want session-1", got["sessionId"])
+	}
+	if got["localPort"] != float64(55221) {
+		t.Fatalf("localPort = %v, want 55221", got["localPort"])
+	}
+}
+
 func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 	sessionDir := t.TempDir()
 	sshConfigPath := filepath.Join(t.TempDir(), "ssh_config")

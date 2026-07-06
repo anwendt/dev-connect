@@ -322,7 +322,23 @@ func newStatusCommand(opts *cliOptions) *cobra.Command {
 		Short: "Print managed session status",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return writeResponse(cmd, opts, output.Response{Status: "Disconnected"})
+			sessionDir, err := sessionDir()
+			if err != nil {
+				return err
+			}
+			state, err := (session.Store{Dir: sessionDir}).Load()
+			if errors.Is(err, session.ErrNotFound) {
+				return writeResponse(cmd, opts, output.Response{Status: "Disconnected"})
+			}
+			if err != nil {
+				return err
+			}
+			return writeResponse(cmd, opts, output.Response{
+				Status:    "Connected",
+				Server:    state.Target,
+				SessionID: state.SessionID,
+				LocalPort: state.LocalPort,
+			})
 		},
 	}
 }
