@@ -42,8 +42,8 @@ jobs:
       - name: Release readiness
         run: make release-check
 
-      - name: Build binary
-        run: make build
+      - name: Build release binaries
+        run: make build-all VERSION=${{ github.ref_name }}
 
       - name: Generate SBOM
         run: make sbom
@@ -61,6 +61,4 @@ jobs:
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |
-            bin/dev-connect
             dist/*
-

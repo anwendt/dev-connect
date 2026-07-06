@@ -26,6 +26,7 @@ func TestMakefileContainsApprovedCICDTargets(t *testing.T) {
 		"helm-package:",
 		"sbom:",
 		"sign:",
+		"build-all:",
 		"release-check:",
 	} {
 		assertContains(t, makefile, target)
@@ -94,7 +95,7 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 
 	for _, required := range []string{
 		"make release-check",
-		"make build",
+		"make build-all",
 		"make sbom",
 		"make container-build",
 		"make helm-package",
@@ -104,6 +105,36 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"actions/attest-build-provenance",
 	} {
 		assertContains(t, release, required)
+	}
+}
+
+func TestCIWorkflowValidatesSupportedClientOperatingSystems(t *testing.T) {
+	ci := readText(t, rootPath(".github/workflows/ci.yml"))
+
+	for _, required := range []string{
+		"ubuntu-latest",
+		"macos-latest",
+		"windows-latest",
+		"make test-unit",
+		"make test-e2e",
+		"make build",
+	} {
+		assertContains(t, ci, required)
+	}
+}
+
+func TestMakefileBuildAllTargetsSupportedReleasePlatforms(t *testing.T) {
+	makefile := readText(t, rootPath("Makefile"))
+
+	for _, required := range []string{
+		"darwin/amd64",
+		"darwin/arm64",
+		"linux/amd64",
+		"linux/arm64",
+		"windows/amd64",
+		"CGO_ENABLED=0",
+	} {
+		assertContains(t, makefile, required)
 	}
 }
 

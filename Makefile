@@ -1,4 +1,4 @@
-.PHONY: help fmt fmt-check lint test-unit test-integration test-security test-e2e test-performance-local test build container-build helm-lint helm-template helm-package kustomize-build sbom sign release-check clean
+.PHONY: help fmt fmt-check lint test-unit test-integration test-security test-e2e test-performance-local test build build-all container-build helm-lint helm-template helm-package kustomize-build sbom sign release-check clean
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -10,6 +10,7 @@ DOCKER ?= docker
 SYFT ?= syft
 COSIGN ?= cosign
 IMAGE ?= ghcr.io/anwendt/dev-connect:local
+VERSION ?= dev
 
 help:
 	@printf '%s\n' \
@@ -32,6 +33,7 @@ help:
 		'  make sign             Sign container image when cosign is available' \
 		'  make release-check    Validate release readiness' \
 		'  make build            Build dev-connect' \
+		'  make build-all        Build release binaries for Windows, Linux, and macOS' \
 		'  make clean            Remove local build outputs'
 
 fmt:
@@ -120,6 +122,23 @@ release-check: fmt-check lint test-unit test-integration test-security test-e2e 
 
 build:
 	GOCACHE=$(GO_CACHE) $(GO) build -buildvcs=false -o bin/dev-connect ./cmd/dev-connect
+
+build-all:
+	@mkdir -p dist
+	@for target in \
+		darwin/amd64 \
+		darwin/arm64 \
+		linux/amd64 \
+		linux/arm64 \
+		windows/amd64; do \
+		goos=$${target%/*}; \
+		goarch=$${target#*/}; \
+		name=dev-connect-$${VERSION}-$${goos}-$${goarch}; \
+		output=dist/$${name}; \
+		if [ "$${goos}" = "windows" ]; then output=$${output}.exe; fi; \
+		printf 'building %s/%s -> %s\n' "$${goos}" "$${goarch}" "$${output}"; \
+		GOOS=$${goos} GOARCH=$${goarch} CGO_ENABLED=0 GOCACHE=$(GO_CACHE) $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o "$${output}" ./cmd/dev-connect; \
+	done
 
 clean:
 	GOCACHE=$(GO_CACHE) $(GO) clean ./...
