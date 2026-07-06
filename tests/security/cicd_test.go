@@ -15,18 +15,21 @@ func TestMakefileContainsApprovedCICDTargets(t *testing.T) {
 	for _, target := range []string{
 		"fmt-check:",
 		"lint:",
+		"license-check:",
 		"test-unit:",
 		"test-integration:",
 		"test-security:",
 		"test-e2e:",
 		"test-performance-local:",
 		"container-build:",
+		"container-scan:",
 		"helm-lint:",
 		"helm-template:",
 		"helm-package:",
 		"sbom:",
 		"sign:",
 		"build-all:",
+		"checksums:",
 		"release-check:",
 	} {
 		assertContains(t, makefile, target)
@@ -98,10 +101,14 @@ func TestReleaseWorkflowIncludesSupplyChainControls(t *testing.T) {
 		"make build-all",
 		"make sbom",
 		"make container-build",
+		"make container-scan",
 		"make helm-package",
+		"make checksums",
 		"make sign",
 		"cosign-installer",
 		"anchore/sbom-action",
+		"aquasecurity/setup-trivy",
+		"go install github.com/google/go-licenses@latest",
 		"actions/attest-build-provenance",
 	} {
 		assertContains(t, release, required)

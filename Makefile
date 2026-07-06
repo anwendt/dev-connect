@@ -1,4 +1,4 @@
-.PHONY: help fmt fmt-check lint test-unit test-integration test-security test-e2e test-performance-local test build build-all container-build helm-lint helm-template helm-package kustomize-build sbom sign release-check clean
+.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-scan helm-lint helm-template helm-package kustomize-build sbom sign release-check clean
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -9,6 +9,8 @@ KUSTOMIZE ?= kustomize
 DOCKER ?= docker
 SYFT ?= syft
 COSIGN ?= cosign
+GO_LICENSES ?= go-licenses
+TRIVY ?= trivy
 IMAGE ?= ghcr.io/anwendt/dev-connect:local
 VERSION ?= dev
 
@@ -18,6 +20,7 @@ help:
 		'  make fmt              Format Go source files' \
 		'  make fmt-check        Verify Go formatting' \
 		'  make lint             Run golangci-lint when available' \
+		'  make license-check    Run dependency license policy checks when available' \
 		'  make test-unit        Run unit tests' \
 		'  make test-integration Run integration tests' \
 		'  make test-security    Run security and architecture tests' \
@@ -34,6 +37,8 @@ help:
 		'  make release-check    Validate release readiness' \
 		'  make build            Build dev-connect' \
 		'  make build-all        Build release binaries for Windows, Linux, and macOS' \
+		'  make checksums        Generate SHA-256 checksums for dist artifacts' \
+		'  make container-scan   Scan the container image when Trivy is available' \
 		'  make clean            Remove local build outputs'
 
 fmt:
@@ -47,6 +52,13 @@ lint:
 		GOCACHE=$(GO_CACHE) GOLANGCI_LINT_CACHE=$(GOLANGCI_LINT_CACHE) $(GOLANGCI_LINT) run ./...; \
 	else \
 		printf '%s\n' 'golangci-lint not installed; skipping lint in local foundation slice.'; \
+	fi
+
+license-check:
+	@if command -v $(GO_LICENSES) >/dev/null 2>&1; then \
+		$(GO_LICENSES) check ./... --allowed_licenses=Apache-2.0,MIT,BSD-2-Clause,BSD-3-Clause,ISC; \
+	else \
+		printf '%s\n' 'go-licenses not installed; skipping license-check in local slice.'; \
 	fi
 
 test-unit:
@@ -71,6 +83,13 @@ container-build:
 		$(DOCKER) build -f gateway/haproxy/Dockerfile -t $(IMAGE) .; \
 	else \
 		printf '%s\n' 'docker not installed; skipping container-build in local slice.'; \
+	fi
+
+container-scan:
+	@if command -v $(TRIVY) >/dev/null 2>&1; then \
+		$(TRIVY) image --exit-code 1 --severity HIGH,CRITICAL $(IMAGE); \
+	else \
+		printf '%s\n' 'trivy not installed; skipping container-scan in local slice.'; \
 	fi
 
 helm-lint:
@@ -118,7 +137,7 @@ sign:
 		printf '%s\n' 'cosign not installed; skipping sign in local slice.'; \
 	fi
 
-release-check: fmt-check lint test-unit test-integration test-security test-e2e helm-lint helm-template kustomize-build
+release-check: fmt-check lint license-check test-unit test-integration test-security test-e2e helm-lint helm-template kustomize-build
 
 build:
 	GOCACHE=$(GO_CACHE) $(GO) build -buildvcs=false -o bin/dev-connect ./cmd/dev-connect
@@ -139,6 +158,14 @@ build-all:
 		printf 'building %s/%s -> %s\n' "$${goos}" "$${goarch}" "$${output}"; \
 		GOOS=$${goos} GOARCH=$${goarch} CGO_ENABLED=0 GOCACHE=$(GO_CACHE) $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o "$${output}" ./cmd/dev-connect; \
 	done
+
+checksums:
+	@if [ -d dist ]; then \
+		(cd dist && shasum -a 256 * > checksums.txt); \
+	else \
+		printf '%s\n' 'dist directory not found; run make build-all or make helm-package first.'; \
+		exit 1; \
+	fi
 
 clean:
 	GOCACHE=$(GO_CACHE) $(GO) clean ./...
