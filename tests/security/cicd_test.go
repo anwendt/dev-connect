@@ -122,7 +122,7 @@ func TestCIWorkflowValidatesSupportedClientOperatingSystems(t *testing.T) {
 
 	for _, required := range []string{
 		"ubuntu-latest",
-		"macos-latest",
+		"macos-15",
 		"windows-latest",
 		"make test-unit",
 		"make test-e2e",
