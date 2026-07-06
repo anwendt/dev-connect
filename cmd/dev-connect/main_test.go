@@ -167,6 +167,12 @@ func TestListOutputsVersionedJSON(t *testing.T) {
 func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string) {
 	t.Helper()
 
+	writeSessionStateWithPID(t, sessionDir, sshConfigPath, knownHostsPath, 0)
+}
+
+func writeSessionStateWithPID(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string, portForwardPID int) {
+	t.Helper()
+
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
 		t.Fatalf("create session dir: %v", err)
 	}
@@ -176,6 +182,7 @@ func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath s
   "gateway": "dev01",
   "namespace": "dev-connect",
   "localPort": 55221,
+  "portForwardPid": ` + fmt.Sprint(portForwardPID) + `,
   "sshConfigPath": "` + sshConfigPath + `",
   "knownHostsPath": "` + knownHostsPath + `",
   "reconnect": false
@@ -299,6 +306,42 @@ func TestConnectRejectsExistingSessionState(t *testing.T) {
 
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("connect with existing session succeeded")
+	}
+}
+
+func TestConnectClearsStaleSessionState(t *testing.T) {
+	configPath := writeCLIConfig(t)
+	sessionDir := t.TempDir()
+	sshConfigPath := filepath.Join(t.TempDir(), "ssh_config")
+	knownHostsPath := filepath.Join(t.TempDir(), "known_hosts")
+	if err := os.WriteFile(sshConfigPath, []byte("Host dev01\n"), 0o600); err != nil {
+		t.Fatalf("write ssh config: %v", err)
+	}
+	if err := os.WriteFile(knownHostsPath, []byte("dev01 ssh-ed25519 key\n"), 0o600); err != nil {
+		t.Fatalf("write known hosts: %v", err)
+	}
+	writeSessionStateWithPID(t, sessionDir, sshConfigPath, knownHostsPath, 424242)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	previousProcessExists := sessionProcessExists
+	sessionProcessExists = func(pid int) bool { return pid != 424242 }
+	t.Cleanup(func() {
+		sessionProcessExists = previousProcessExists
+	})
+
+	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
+
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", got["status"])
+	}
+	for _, path := range []string{sshConfigPath, knownHostsPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("stale artifact %s still exists or unexpected stat error: %v", path, err)
+		}
 	}
 }
 

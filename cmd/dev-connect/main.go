@@ -42,6 +42,8 @@ type cliOptions struct {
 	timeout     time.Duration
 }
 
+var sessionProcessExists = session.ProcessExists
+
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -192,12 +194,22 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 }
 
 func ensureNoActiveSession(sessionDir string) error {
-	_, err := (session.Store{Dir: sessionDir}).Load()
+	store := session.Store{Dir: sessionDir}
+	state, err := store.Load()
 	if errors.Is(err, session.ErrNotFound) {
 		return nil
 	}
 	if err != nil {
 		return err
+	}
+	if state.IsStale(sessionProcessExists) {
+		if err := sshconfig.Cleanup(sshconfig.SessionFiles{
+			ConfigPath:     state.SSHConfigPath,
+			KnownHostsPath: state.KnownHostsPath,
+		}); err != nil {
+			return err
+		}
+		return store.Clear()
 	}
 	return session.ErrLocked
 }
