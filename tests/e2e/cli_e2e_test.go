@@ -72,6 +72,72 @@ func TestCLIRejectsInvalidConfigEndToEnd(t *testing.T) {
 	}
 }
 
+func TestCLIListTargetsEndToEnd(t *testing.T) {
+	binary := buildCLI(t)
+	configPath := writeConfig(t)
+
+	output := runCLI(t, binary, "--config", configPath, "--output", "json", "list")
+
+	var response map[string]any
+	if err := json.Unmarshal([]byte(output), &response); err != nil {
+		t.Fatalf("decode JSON output: %v\n%s", err, output)
+	}
+	targets, ok := response["targets"].([]any)
+	if !ok || len(targets) != 1 {
+		t.Fatalf("targets = %#v, want one target", response["targets"])
+	}
+	target := targets[0].(map[string]any)
+	if target["name"] != "dev01" || target["gateway"] != "dev01" {
+		t.Fatalf("target = %#v, want dev01/dev01", target)
+	}
+}
+
+func TestCLIStatusEndToEnd(t *testing.T) {
+	binary := buildCLI(t)
+	sessionDir := t.TempDir()
+	writeSessionState(t, sessionDir, "/tmp/ssh_config", "/tmp/known_hosts")
+
+	output := runCLI(t, binary, "--output", "json", "status", withEnv("DEV_CONNECT_SESSION_DIR="+sessionDir))
+
+	var response map[string]any
+	if err := json.Unmarshal([]byte(output), &response); err != nil {
+		t.Fatalf("decode JSON output: %v\n%s", err, output)
+	}
+	if response["status"] != "Connected" || response["server"] != "dev01" || response["sessionId"] != "session-1" {
+		t.Fatalf("unexpected status response: %#v", response)
+	}
+}
+
+func TestCLIDisconnectEndToEnd(t *testing.T) {
+	binary := buildCLI(t)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
+	sshConfigPath := filepath.Join(sshDir, "ssh_config")
+	knownHostsPath := filepath.Join(sshDir, "known_hosts")
+	if err := os.WriteFile(sshConfigPath, []byte("Host dev01\n"), 0o600); err != nil {
+		t.Fatalf("write ssh config: %v", err)
+	}
+	if err := os.WriteFile(knownHostsPath, []byte("host key\n"), 0o600); err != nil {
+		t.Fatalf("write known hosts: %v", err)
+	}
+	writeSessionState(t, sessionDir, sshConfigPath, knownHostsPath)
+
+	output := runCLI(t, binary, "--output", "json", "disconnect", withEnv("DEV_CONNECT_SESSION_DIR="+sessionDir))
+
+	var response map[string]any
+	if err := json.Unmarshal([]byte(output), &response); err != nil {
+		t.Fatalf("decode JSON output: %v\n%s", err, output)
+	}
+	if response["status"] != "Disconnected" {
+		t.Fatalf("status = %v, want Disconnected", response["status"])
+	}
+	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("%s still exists or unexpected stat error: %v", path, err)
+		}
+	}
+}
+
 func TestCLIConfigLocationEndToEnd(t *testing.T) {
 	binary := buildCLI(t)
 
@@ -125,6 +191,27 @@ func runCLI(t *testing.T, binary string, args ...any) string {
 		t.Fatalf("run dev-connect %v: %v\n%s", cliArgs, err, string(output))
 	}
 	return string(output)
+}
+
+func writeSessionState(t *testing.T, sessionDir, sshConfigPath, knownHostsPath string) {
+	t.Helper()
+
+	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
+		t.Fatalf("create session dir: %v", err)
+	}
+	data := []byte(`{
+  "sessionId": "session-1",
+  "target": "dev01",
+  "gateway": "dev01",
+  "namespace": "dev-connect",
+  "localPort": 55221,
+  "sshConfigPath": "` + sshConfigPath + `",
+  "knownHostsPath": "` + knownHostsPath + `",
+  "reconnect": false
+}`)
+	if err := os.WriteFile(filepath.Join(sessionDir, "session.json"), data, 0o600); err != nil {
+		t.Fatalf("write session state: %v", err)
+	}
 }
 
 func writeConfig(t *testing.T) string {
