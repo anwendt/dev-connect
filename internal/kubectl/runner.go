@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 // ExecutableRunner executes the locally installed kubectl binary.
@@ -161,58 +162,64 @@ func (runner ExecutableRunner) StartUntilReady(ctx context.Context, command Comm
 		return StartedProcess{}, errors.New("kubectl path is required")
 	}
 
-	cmd := exec.CommandContext(ctx, kubectlPath, command.Args...)
+	cmd := exec.Command(kubectlPath, command.Args...)
 	cmd.Env = mergeEnv(runner.baseEnv(), command.Env)
 
-	stdoutPipe, err := cmd.StdoutPipe()
+	stdoutFile, err := os.CreateTemp("", "dev-connect-kubectl-stdout-*.log")
 	if err != nil {
-		return StartedProcess{}, fmt.Errorf("open kubectl stdout pipe: %w", err)
+		return StartedProcess{}, fmt.Errorf("open kubectl stdout log: %w", err)
 	}
-	stderrPipe, err := cmd.StderrPipe()
+	defer func() {
+		_ = stdoutFile.Close()
+	}()
+	stderrFile, err := os.CreateTemp("", "dev-connect-kubectl-stderr-*.log")
 	if err != nil {
-		return StartedProcess{}, fmt.Errorf("open kubectl stderr pipe: %w", err)
+		return StartedProcess{}, fmt.Errorf("open kubectl stderr log: %w", err)
 	}
+	defer func() {
+		_ = stderrFile.Close()
+	}()
+	cmd.Stdout = stdoutFile
+	cmd.Stderr = stderrFile
+
 	if err := cmd.Start(); err != nil {
 		return StartedProcess{}, fmt.Errorf("start kubectl: %w", err)
 	}
 
-	events := make(chan outputEvent, 2)
-	go scanOutput(stdoutPipe, streamStdout, events)
-	go scanOutput(stderrPipe, streamStderr, events)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
 	waitCh := make(chan error, 1)
 	go func() {
 		waitCh <- cmd.Wait()
 	}()
 
+	ticker := time.NewTicker(50 * time.Millisecond)
+	defer ticker.Stop()
+
 	for {
 		select {
-		case event := <-events:
-			if event.err != nil {
-				continue
-			}
-			switch event.stream {
-			case streamStdout:
-				stdout.WriteString(event.line)
-				stdout.WriteByte('\n')
-			case streamStderr:
-				stderr.WriteString(event.line)
-				stderr.WriteByte('\n')
-			}
-			if ready(event.line) {
+		case <-ticker.C:
+			stdout := readFileBestEffort(stdoutFile.Name())
+			stderr := readFileBestEffort(stderrFile.Name())
+			if readyOutput(stdout, ready) || readyOutput(stderr, ready) {
 				return StartedProcess{
 					PID:    cmd.Process.Pid,
-					Stdout: stdout.String(),
-					Stderr: stderr.String(),
+					Stdout: stdout,
+					Stderr: stderr,
 				}, nil
 			}
 		case err := <-waitCh:
+			stdout := readFileBestEffort(stdoutFile.Name())
+			stderr := readFileBestEffort(stderrFile.Name())
 			result := Result{
-				Stdout:   stdout.String(),
-				Stderr:   stderr.String(),
+				Stdout:   stdout,
+				Stderr:   stderr,
 				ExitCode: exitCode(err),
+			}
+			if readyOutput(stdout, ready) || readyOutput(stderr, ready) {
+				return StartedProcess{
+					PID:    cmd.Process.Pid,
+					Stdout: stdout,
+					Stderr: stderr,
+				}, nil
 			}
 			if err != nil {
 				if result.ExitCode >= 0 {
@@ -227,6 +234,23 @@ func (runner ExecutableRunner) StartUntilReady(ctx context.Context, command Comm
 			return StartedProcess{}, ctx.Err()
 		}
 	}
+}
+
+func readFileBestEffort(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+func readyOutput(output string, ready ReadyFunc) bool {
+	for _, line := range strings.Split(output, "\n") {
+		if ready(line) {
+			return true
+		}
+	}
+	return false
 }
 
 func executablePath(path string) (string, error) {

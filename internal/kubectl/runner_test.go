@@ -226,6 +226,44 @@ echo "completed" > "$MARKER_PATH"
 	}
 }
 
+func TestExecutableRunnerBackgroundProcessSurvivesContextCancelAfterReadiness(t *testing.T) {
+	binDir := t.TempDir()
+	markerPath := filepath.Join(t.TempDir(), "survived")
+	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
+trap 'exit 0' TERM
+echo "Forwarding from 127.0.0.1:55221 -> 22"
+sleep 1
+echo "survived" > "$MARKER_PATH"
+sleep 30
+`))
+
+	runner := ExecutableRunner{
+		Path:    kubectlPath,
+		BaseEnv: []string{testPath(binDir), "MARKER_PATH=" + markerPath},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	started, err := runner.StartUntilReady(ctx, Command{}, func(output string) bool {
+		return strings.Contains(output, "Forwarding from ")
+	})
+	if err != nil {
+		cancel()
+		t.Fatalf("start until ready: %v", err)
+	}
+	defer func() {
+		process, findErr := os.FindProcess(started.PID)
+		if findErr == nil {
+			_ = process.Kill()
+		}
+	}()
+
+	cancel()
+	time.Sleep(1500 * time.Millisecond)
+	if _, err := os.Stat(markerPath); err != nil {
+		t.Fatalf("background process did not survive context cancellation after readiness: %v", err)
+	}
+}
+
 func TestExecutableRunnerStartUntilReadyReturnsExitErrorBeforeReadiness(t *testing.T) {
 	binDir := t.TempDir()
 	kubectlPath := writeFakeExecutable(t, binDir, "kubectl", fakeScript(`
