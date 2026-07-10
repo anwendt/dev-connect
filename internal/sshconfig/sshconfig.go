@@ -90,7 +90,7 @@ func renderConfig(options SessionOptions, knownHostsPath string) string {
 		"Host " + options.Alias,
 		"  HostName " + options.LocalHost,
 		fmt.Sprintf("  Port %d", options.LocalPort),
-		"  UserKnownHostsFile " + knownHostsPath,
+		"  UserKnownHostsFile " + quoteConfigValue(knownHostsPath),
 		"  StrictHostKeyChecking yes",
 		"  IdentitiesOnly yes",
 	}
@@ -98,6 +98,12 @@ func renderConfig(options SessionOptions, knownHostsPath string) string {
 		lines = append(lines[:3], append([]string{"  User " + options.User}, lines[3:]...)...)
 	}
 	return strings.Join(lines, "\n") + "\n"
+}
+
+func quoteConfigValue(value string) string {
+	escaped := strings.ReplaceAll(value, `\`, `\\`)
+	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+	return `"` + escaped + `"`
 }
 
 func writeRestricted(path string, data []byte) error {

@@ -36,12 +36,32 @@ func TestWriteSessionFilesPinsHostKey(t *testing.T) {
 	assertContains(t, configData, "Port 55221")
 	assertContains(t, configData, "User developer")
 	assertContains(t, configData, "StrictHostKeyChecking yes")
-	assertContains(t, configData, "UserKnownHostsFile "+files.KnownHostsPath)
+	assertContains(t, configData, `UserKnownHostsFile "`+files.KnownHostsPath+`"`)
 	assertNotContains(t, configData, "StrictHostKeyChecking no")
 	assertNotContains(t, configData, "IdentityFile")
 	assertNotContains(t, configData, "PRIVATE KEY")
 
 	assertContains(t, knownHostsData, "[127.0.0.1]:55221 "+hostKeyV1)
+}
+
+func TestWriteSessionFilesQuotesKnownHostsPathWithSpaces(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "Application Support", "dev-connect", "session", "ssh")
+
+	files, err := WriteSessionFiles(SessionOptions{
+		Dir:       dir,
+		Alias:     "dev01",
+		User:      "developer",
+		LocalHost: "127.0.0.1",
+		LocalPort: 55221,
+		HostKey:   hostKeyV1,
+	})
+	if err != nil {
+		t.Fatalf("write session files: %v", err)
+	}
+
+	configData := readFile(t, files.ConfigPath)
+	assertContains(t, configData, `UserKnownHostsFile "`+files.KnownHostsPath+`"`)
+	assertNotContains(t, configData, "UserKnownHostsFile "+files.KnownHostsPath+"\n")
 }
 
 func TestWriteSessionFilesRejectsMissingHostKey(t *testing.T) {
