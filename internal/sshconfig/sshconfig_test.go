@@ -36,7 +36,7 @@ func TestWriteSessionFilesPinsHostKey(t *testing.T) {
 	assertContains(t, configData, "Port 55221")
 	assertContains(t, configData, "User developer")
 	assertContains(t, configData, "StrictHostKeyChecking yes")
-	assertContains(t, configData, `UserKnownHostsFile "`+files.KnownHostsPath+`"`)
+	assertContains(t, configData, "UserKnownHostsFile "+quoteConfigValue(files.KnownHostsPath))
 	assertNotContains(t, configData, "StrictHostKeyChecking no")
 	assertNotContains(t, configData, "IdentityFile")
 	assertNotContains(t, configData, "PRIVATE KEY")
@@ -60,7 +60,7 @@ func TestWriteSessionFilesQuotesKnownHostsPathWithSpaces(t *testing.T) {
 	}
 
 	configData := readFile(t, files.ConfigPath)
-	assertContains(t, configData, `UserKnownHostsFile "`+files.KnownHostsPath+`"`)
+	assertContains(t, configData, "UserKnownHostsFile "+quoteConfigValue(files.KnownHostsPath))
 	assertNotContains(t, configData, "UserKnownHostsFile "+files.KnownHostsPath+"\n")
 }
 
