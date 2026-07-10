@@ -12,12 +12,13 @@ const fileMode = 0o600
 
 // SessionOptions describes temporary SSH files for one dev-connect session.
 type SessionOptions struct {
-	Dir       string
-	Alias     string
-	User      string
-	LocalHost string
-	LocalPort int
-	HostKey   string
+	Dir          string
+	Alias        string
+	User         string
+	IdentityFile string
+	LocalHost    string
+	LocalPort    int
+	HostKey      string
 }
 
 // SessionFiles identifies generated temporary SSH files.
@@ -96,6 +97,11 @@ func renderConfig(options SessionOptions, knownHostsPath string) string {
 	}
 	if options.User != "" {
 		lines = append(lines[:3], append([]string{"  User " + options.User}, lines[3:]...)...)
+	}
+	if options.IdentityFile != "" {
+		identityLine := "  IdentityFile " + quoteConfigValue(options.IdentityFile)
+		insertAt := len(lines) - 1
+		lines = append(lines[:insertAt], append([]string{identityLine}, lines[insertAt:]...)...)
 	}
 	return strings.Join(lines, "\n") + "\n"
 }

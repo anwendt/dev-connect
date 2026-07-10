@@ -81,7 +81,7 @@ targets:
   dev01:
     gateway: dev01
     user: developer
-    hostKeyRef: dev01
+    identityFile: /Users/developer/.ssh/dev01
 vscode:
   launcherPath: ""
 ```
@@ -141,21 +141,59 @@ handling mechanism outside `dev-connect`.
 
 ## Pinned Host Keys
 
-Every target must reference an approved pinned SSH host key:
+Every target must have an approved pinned SSH host key. By default,
+`dev-connect` uses the target name as the host key reference:
 
 ```yaml
 targets:
   dev01:
     gateway: dev01
     user: developer
-    hostKeyRef: dev01
 hostKeys:
   dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+```
+
+Set `hostKeyRef` only when the key inventory uses a different name:
+
+```yaml
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    hostKeyRef: ubuntu-dev01-ed25519
+hostKeys:
+  ubuntu-dev01-ed25519: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
 ```
 
 The host key value must come from the enterprise GitOps host key inventory. The
 client writes the key into a temporary `known_hosts` file and keeps
 `StrictHostKeyChecking yes`.
+
+## SSH Identity Files
+
+Targets may define a local private key path:
+
+```yaml
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    identityFile: /Users/developer/.ssh/dev01
+```
+
+On Windows:
+
+```yaml
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    identityFile: C:\Users\developer\.ssh\dev01
+```
+
+The key file remains local. `dev-connect` does not read, copy, log, or store the
+private key material. It only writes an `IdentityFile` directive into the
+temporary SSH configuration generated for the session.
 
 ## VS Code Launcher Discovery
 

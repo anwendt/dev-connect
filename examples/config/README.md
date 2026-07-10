@@ -13,6 +13,13 @@ The examples are intentionally usable as starting points, but pinned SSH host
 keys are placeholders. Replace every `hostKeys` value with the approved host key
 from the enterprise GitOps host key inventory before using a configuration.
 
+Targets may set `identityFile` to select a local private key without editing the
+user's SSH config. The private key file remains local and is not copied or
+stored by `dev-connect`.
+
+When `hostKeyRef` is omitted, `dev-connect` uses the target name as the host key
+reference. For example, target `dev01` uses `hostKeys.dev01`.
+
 ## Examples
 
 | File | Purpose |

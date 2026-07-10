@@ -59,9 +59,13 @@ func Prepare(options Options) (Result, error) {
 		return Result{}, fmt.Errorf("unknown gateway %q", gatewayName)
 	}
 
-	hostKey := options.Config.HostKeys[target.HostKeyRef]
+	hostKeyRef := target.HostKeyRef
+	if hostKeyRef == "" {
+		hostKeyRef = options.TargetName
+	}
+	hostKey := options.Config.HostKeys[hostKeyRef]
 	if hostKey == "" {
-		return Result{}, fmt.Errorf("missing pinned SSH host key %q", target.HostKeyRef)
+		return Result{}, fmt.Errorf("missing pinned SSH host key %q", hostKeyRef)
 	}
 
 	allocatePort := options.AllocatePort
@@ -82,12 +86,13 @@ func Prepare(options Options) (Result, error) {
 	}
 
 	sshFiles, err := sshconfig.WriteSessionFiles(sshconfig.SessionOptions{
-		Dir:       sshDir,
-		Alias:     options.TargetName,
-		User:      target.User,
-		LocalHost: allocation.Host,
-		LocalPort: allocation.Port,
-		HostKey:   hostKey,
+		Dir:          sshDir,
+		Alias:        options.TargetName,
+		User:         target.User,
+		IdentityFile: target.IdentityFile,
+		LocalHost:    allocation.Host,
+		LocalPort:    allocation.Port,
+		HostKey:      hostKey,
 	})
 	if err != nil {
 		return Result{}, err

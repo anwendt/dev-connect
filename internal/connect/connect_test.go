@@ -54,6 +54,7 @@ func TestPrepareCreatesSSHFilesAndSessionState(t *testing.T) {
 	assertContains(t, configData, "Port 55221")
 	assertContains(t, configData, "User developer")
 	assertContains(t, configData, "StrictHostKeyChecking yes")
+	assertContains(t, configData, "IdentityFile ")
 	assertContains(t, knownHostsData, "[127.0.0.1]:55221 "+pinnedHostKey)
 
 	state, err := session.Store{Dir: result.SessionDir}.Load()
@@ -171,9 +172,9 @@ func testConfig() config.Config {
 		},
 		Targets: map[string]config.Target{
 			"dev01": {
-				Gateway:    "gw-dev01",
-				User:       "developer",
-				HostKeyRef: "dev01",
+				Gateway:      "gw-dev01",
+				User:         "developer",
+				IdentityFile: "/Users/developer/.ssh/dev01",
 			},
 		},
 		HostKeys: map[string]string{

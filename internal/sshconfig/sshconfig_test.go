@@ -44,6 +44,26 @@ func TestWriteSessionFilesPinsHostKey(t *testing.T) {
 	assertContains(t, knownHostsData, "[127.0.0.1]:55221 "+hostKeyV1)
 }
 
+func TestWriteSessionFilesIncludesIdentityFileWhenConfigured(t *testing.T) {
+	identityFile := filepath.Join(t.TempDir(), "Application Support", "keys", "dev01")
+	files, err := WriteSessionFiles(SessionOptions{
+		Dir:          t.TempDir(),
+		Alias:        "dev01",
+		User:         "developer",
+		LocalHost:    "127.0.0.1",
+		LocalPort:    55221,
+		HostKey:      hostKeyV1,
+		IdentityFile: identityFile,
+	})
+	if err != nil {
+		t.Fatalf("write session files: %v", err)
+	}
+
+	configData := readFile(t, files.ConfigPath)
+	assertContains(t, configData, "IdentityFile "+quoteConfigValue(identityFile))
+	assertContains(t, configData, "IdentitiesOnly yes")
+}
+
 func TestWriteSessionFilesQuotesKnownHostsPathWithSpaces(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "Application Support", "dev-connect", "session", "ssh")
 

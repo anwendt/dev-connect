@@ -76,9 +76,10 @@ type Gateway struct {
 
 // Target describes a development server alias.
 type Target struct {
-	Gateway    string `json:"gateway"`
-	User       string `json:"user,omitempty"`
-	HostKeyRef string `json:"hostKeyRef"`
+	Gateway      string `json:"gateway"`
+	User         string `json:"user,omitempty"`
+	IdentityFile string `json:"identityFile,omitempty"`
+	HostKeyRef   string `json:"hostKeyRef,omitempty"`
 }
 
 // VSCode describes VS Code launcher configuration.
@@ -184,12 +185,15 @@ func (cfg Config) Validate() error {
 				return fmt.Errorf("target %q references unknown gateway %q", name, target.Gateway)
 			}
 		}
-		if target.HostKeyRef == "" {
-			return fmt.Errorf("target %q missing hostKeyRef", name)
+		hostKeyRef := target.HostKeyRef
+		if hostKeyRef == "" {
+			hostKeyRef = name
+			target.HostKeyRef = hostKeyRef
+			cfg.Targets[name] = target
 		}
 		if len(cfg.HostKeys) > 0 {
-			if cfg.HostKeys[target.HostKeyRef] == "" {
-				return fmt.Errorf("target %q references unknown host key %q", name, target.HostKeyRef)
+			if cfg.HostKeys[hostKeyRef] == "" {
+				return fmt.Errorf("target %q references unknown host key %q", name, hostKeyRef)
 			}
 		}
 	}

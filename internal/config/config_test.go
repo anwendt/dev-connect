@@ -45,6 +45,46 @@ hostKeys:
 	}
 }
 
+func TestParseDefaultsHostKeyRefToTargetName(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+targets:
+  dev01:
+    gateway: dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if cfg.Targets["dev01"].HostKeyRef != "dev01" {
+		t.Fatalf("hostKeyRef = %q, want dev01", cfg.Targets["dev01"].HostKeyRef)
+	}
+}
+
+func TestParseTargetIdentityFile(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    identityFile: /Users/developer/.ssh/dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if cfg.Targets["dev01"].IdentityFile != "/Users/developer/.ssh/dev01" {
+		t.Fatalf("identityFile = %q", cfg.Targets["dev01"].IdentityFile)
+	}
+}
+
 func TestParseRejectsUnknownHostKeyReferenceWhenInventoryIsConfigured(t *testing.T) {
 	_, err := Parse([]byte(`
 apiVersion: dev-connect/v1
