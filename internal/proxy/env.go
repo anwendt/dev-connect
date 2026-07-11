@@ -26,15 +26,21 @@ func buildEnvForOS(goos string, base []string, config Config) []string {
 
 	if config.HTTPProxy != "" {
 		env = set(goos, env, "HTTP_PROXY", config.HTTPProxy)
-		env = set(goos, env, "http_proxy", config.HTTPProxy)
+		if goos != "windows" {
+			env = set(goos, env, "http_proxy", config.HTTPProxy)
+		}
 	}
 	if config.HTTPSProxy != "" {
 		env = set(goos, env, "HTTPS_PROXY", config.HTTPSProxy)
-		env = set(goos, env, "https_proxy", config.HTTPSProxy)
+		if goos != "windows" {
+			env = set(goos, env, "https_proxy", config.HTTPSProxy)
+		}
 	}
 	if config.NoProxy != "" {
 		env = set(goos, env, "NO_PROXY", config.NoProxy)
-		env = set(goos, env, "no_proxy", config.NoProxy)
+		if goos != "windows" {
+			env = set(goos, env, "no_proxy", config.NoProxy)
+		}
 	}
 	return env
 }
