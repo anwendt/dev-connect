@@ -1,4 +1,4 @@
-.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all checksums container-build container-push container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
+.PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all package-windows-bundle checksums container-build container-push container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
 
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
@@ -22,6 +22,8 @@ HELM_REGISTRY_PASSWORD ?= $(GITHUB_TOKEN)
 HELM_CHART_NAME ?= dev-connect-gateway
 HELM_CHART_VERSION ?= $(shell awk -F': *' '/^version:/ { gsub(/"/, "", $$2); print $$2 }' charts/dev-connect-gateway/Chart.yaml)
 VERSION ?= dev
+KUBECTL_VERSION ?= v1.30.14
+KUBECTL_WINDOWS_AMD64_URL ?= https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/windows/amd64/kubectl.exe
 
 help:
 	@printf '%s\n' \
@@ -48,6 +50,7 @@ help:
 		'  make release-check    Validate release readiness' \
 		'  make build            Build dev-connect' \
 		'  make build-all        Build release binaries for Windows, Linux, and macOS' \
+		'  make package-windows-bundle Build Windows zip with dev-connect.exe and kubectl.exe' \
 		'  make checksums        Generate SHA-256 checksums for dist artifacts' \
 		'  make container-scan   Scan the container image when Trivy is available' \
 		'  make clean            Remove local build outputs'
@@ -203,9 +206,25 @@ build-all:
 		GOOS=$${goos} GOARCH=$${goarch} CGO_ENABLED=0 GOCACHE=$(GO_CACHE) $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o "$${output}" ./cmd/dev-connect; \
 	done
 
+package-windows-bundle: build-all
+	@if ! command -v curl >/dev/null 2>&1; then \
+		printf '%s\n' 'curl is required to download kubectl.exe for the Windows bundle.'; \
+		exit 1; \
+	fi
+	@if ! command -v zip >/dev/null 2>&1; then \
+		printf '%s\n' 'zip is required to package the Windows bundle.'; \
+		exit 1; \
+	fi
+	@mkdir -p dist/windows-amd64-bundle
+	cp dist/dev-connect-$(VERSION)-windows-amd64.exe dist/windows-amd64-bundle/dev-connect.exe
+	curl -fsSLo dist/windows-amd64-bundle/kubectl.exe "$(KUBECTL_WINDOWS_AMD64_URL)"
+	cp LICENSE dist/windows-amd64-bundle/LICENSE
+	cp README.md dist/windows-amd64-bundle/README.md
+	(cd dist/windows-amd64-bundle && zip -q ../dev-connect-$(VERSION)-windows-amd64-bundle.zip dev-connect.exe kubectl.exe LICENSE README.md)
+
 checksums:
 	@if [ -d dist ]; then \
-		(cd dist && shasum -a 256 * > checksums.txt); \
+		(cd dist && find . -maxdepth 1 -type f -print | sed 's#^\./##' | sort | xargs shasum -a 256 > checksums.txt); \
 	else \
 		printf '%s\n' 'dist directory not found; run make build-all or make helm-package first.'; \
 		exit 1; \

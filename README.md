@@ -135,7 +135,8 @@ The examples include:
 
 - a minimal `dev01` setup,
 - process-scoped proxy override settings for `kubectl`,
-- a multi-cluster configuration.
+- a multi-cluster configuration,
+- a Windows setup with bundled `kubectl.exe`.
 
 Default configuration locations:
 
@@ -150,6 +151,13 @@ The effective configuration location can be shown with:
 ```text
 dev-connect config location
 ```
+
+`dev-connect` delegates Kubernetes access to `kubectl`. The client resolves
+`kubectl` from `--kubectl-path`, `DEV_CONNECT_KUBECTL_PATH`,
+`clusters.<name>.kubectlPath`, a `kubectl` binary next to `dev-connect`, `PATH`,
+and finally documented default locations. The Windows bundle release artifact
+contains both `dev-connect.exe` and `kubectl.exe`, so no global `kubectl`
+installation is required on Windows clients.
 
 ## Kubernetes Gateway
 
@@ -224,6 +232,7 @@ dev_connect_target
 The GitHub Actions release workflow builds and publishes:
 
 - Windows, Linux, and macOS client binaries,
+- Windows client bundle with `dev-connect.exe` and `kubectl.exe`,
 - Helm chart package,
 - Helm OCI chart in GHCR,
 - container image in GHCR,

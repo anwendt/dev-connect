@@ -1,0 +1,30 @@
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+contexts:
+  central-dev:
+    cluster: central-dev
+    gateway: dev01
+clusters:
+  central-dev:
+    kubeconfig: C:\Users\developer\.kube\central-dev-cluster.yaml
+    kubernetesContext: ""
+    kubectlPath: C:\Program Files\dev-connect\kubectl.exe
+    proxy:
+      enabled: true
+      httpProxy: http://proxy.example.corp:8080
+      httpsProxy: http://proxy.example.corp:8080
+      noProxy: 127.0.0.1,localhost,.svc,.cluster.local,172.28.0.0/16
+gateways:
+  dev01:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev01
+    port: 22
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    identityFile: C:\Users\developer\.ssh\dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+vscode:
+  launcherPath: C:\Program Files\Microsoft VS Code\bin\code.cmd

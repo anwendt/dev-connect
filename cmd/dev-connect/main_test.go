@@ -270,6 +270,23 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	}
 }
 
+func TestConnectUsesClusterKubectlPathFromConfig(t *testing.T) {
+	kubectlPath := writeFakeKubectl(t, "yes")
+	configPath := writeCLIConfigWithKubectlPath(t, kubectlPath)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", sshDir)
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+
+	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
+
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", got["status"])
+	}
+}
+
 func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
 	configPath := writeCLIConfig(t)
 	sessionDir := t.TempDir()
@@ -554,6 +571,26 @@ vscode:
 `)
 }
 
+func writeCLIConfigWithKubectlPath(t *testing.T, kubectlPath string) string {
+	t.Helper()
+
+	configPath := writeCLIConfig(t)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	updated := strings.Replace(
+		string(data),
+		"  dev:\n    kubernetesContext: rancher-dev",
+		"  dev:\n    kubernetesContext: rancher-dev\n    kubectlPath: "+yamlSingleQuoted(kubectlPath),
+		1,
+	)
+	if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return configPath
+}
+
 func writeCLIConfigData(t *testing.T, suffix string) string {
 	t.Helper()
 
@@ -585,6 +622,10 @@ hostKeys:
 		t.Fatalf("write config: %v", err)
 	}
 	return configPath
+}
+
+func yamlSingleQuoted(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
 func writeFakeCodeLauncher(t *testing.T, outputPath string) string {

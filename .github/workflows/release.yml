@@ -54,6 +54,9 @@ jobs:
       - name: Build release binaries
         run: make build-all VERSION=${{ github.ref_name }}
 
+      - name: Package Windows bundle
+        run: make package-windows-bundle VERSION=${{ github.ref_name }}
+
       - name: Generate SBOM
         run: make sbom
 

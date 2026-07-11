@@ -13,6 +13,7 @@ Configuration supports:
 - multiple gateways,
 - multiple targets,
 - optional process-scoped proxy overrides,
+- optional `kubectl` executable override,
 - VS Code launcher override,
 - pinned SSH host key references.
 
@@ -67,6 +68,7 @@ clusters:
   private-cloud-dev:
     kubeconfig: ""
     kubernetesContext: platform-dev
+    kubectlPath: ""
     proxy:
       enabled: false
       httpProxy: ""
@@ -94,6 +96,35 @@ examples/config/
 
 The examples cover a minimal single-target setup, process-scoped proxy overrides
 for `kubectl`, and a multi-cluster configuration.
+
+## kubectl Discovery
+
+`dev-connect` never opens direct network connections to Rancher or the
+Kubernetes API. All Kubernetes communication is still delegated to a `kubectl`
+subprocess.
+
+The client resolves `kubectl` in this order:
+
+1. `--kubectl-path <path>`
+2. `DEV_CONNECT_KUBECTL_PATH`
+3. `clusters.<name>.kubectlPath`
+4. `kubectl` located next to the `dev-connect` executable
+5. `kubectl` found in `PATH`
+6. documented operating system default locations
+
+Windows clients can use the release bundle that contains both
+`dev-connect.exe` and `kubectl.exe` in the same directory. In that case no
+separate `kubectl` installation and no `PATH` update is required.
+
+Example:
+
+```yaml
+clusters:
+  central-dev:
+    kubeconfig: C:\Users\developer\.kube\central-dev-cluster.yaml
+    kubernetesContext: ""
+    kubectlPath: C:\Program Files\dev-connect\kubectl.exe
+```
 
 ## Proxy Overrides
 

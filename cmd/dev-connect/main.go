@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -39,6 +38,7 @@ type cliOptions struct {
 	output      string
 	noCode      bool
 	noReconnect bool
+	kubectlPath string
 	timeout     time.Duration
 }
 
@@ -70,6 +70,7 @@ func newRootCommand() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&opts.output, "output", "text", "Command output format: text, json")
 	cmd.PersistentFlags().BoolVar(&opts.noCode, "no-code", false, "Do not launch VS Code Desktop")
 	cmd.PersistentFlags().BoolVar(&opts.noReconnect, "no-reconnect", false, "Disable automatic tunnel reconnect")
+	cmd.PersistentFlags().StringVar(&opts.kubectlPath, "kubectl-path", "", "Path to kubectl executable")
 	cmd.PersistentFlags().DurationVar(&opts.timeout, "timeout", 30*time.Second, "Command timeout")
 
 	cmd.PersistentPreRunE = func(_ *cobra.Command, _ []string) error {
@@ -230,7 +231,7 @@ func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, r
 		defer cancel()
 	}
 
-	kubectlPath, err := kubectlPath()
+	kubectlPath, err := kubectlPath(opts, cluster)
 	if err != nil {
 		return tunnel.Result{}, err
 	}
@@ -282,7 +283,7 @@ func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, 
 		defer cancel()
 	}
 
-	kubectlPath, err := kubectlPath()
+	kubectlPath, err := kubectlPath(opts, cluster)
 	if err != nil {
 		return err
 	}
@@ -331,11 +332,18 @@ func selectedCluster(cfg config.Config, opts cliOptions) (config.Cluster, error)
 	return cluster, nil
 }
 
-func kubectlPath() (string, error) {
-	if path := os.Getenv("DEV_CONNECT_KUBECTL_PATH"); path != "" {
-		return kubectl.ResolveExecutable(path, nil)
+func kubectlPath(opts cliOptions, cluster config.Cluster) (string, error) {
+	devConnectPath := ""
+	if path, err := os.Executable(); err == nil {
+		devConnectPath = path
 	}
-	return kubectl.ResolveExecutable("kubectl", strings.Split(os.Getenv("PATH"), string(os.PathListSeparator)))
+	return kubectl.ResolveLocalExecutable(kubectl.ResolveOptions{
+		ExplicitPath:   opts.kubectlPath,
+		EnvPath:        os.Getenv("DEV_CONNECT_KUBECTL_PATH"),
+		ConfiguredPath: cluster.KubectlPath,
+		DevConnectPath: devConnectPath,
+		PathEnv:        os.Getenv("PATH"),
+	})
 }
 
 func sessionDir() (string, error) {

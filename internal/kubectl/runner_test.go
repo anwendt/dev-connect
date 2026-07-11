@@ -320,6 +320,77 @@ func TestResolveExecutableRejectsMissingKubectl(t *testing.T) {
 	}
 }
 
+func TestResolveLocalExecutableUsesExplicitPathFirst(t *testing.T) {
+	explicitPath := writePlainExecutable(t, "kubectl-explicit.exe")
+	envPath := writePlainExecutable(t, "kubectl-env.exe")
+
+	got, err := ResolveLocalExecutable(ResolveOptions{
+		ExplicitPath: explicitPath,
+		EnvPath:      envPath,
+		GOOS:         "windows",
+	})
+	if err != nil {
+		t.Fatalf("resolve kubectl: %v", err)
+	}
+	if got != explicitPath {
+		t.Fatalf("path = %q, want explicit %q", got, explicitPath)
+	}
+}
+
+func TestResolveLocalExecutableUsesConfiguredPathAfterEnv(t *testing.T) {
+	envPath := writePlainExecutable(t, "kubectl-env.exe")
+	configPath := writePlainExecutable(t, "kubectl-config.exe")
+
+	got, err := ResolveLocalExecutable(ResolveOptions{
+		EnvPath:        envPath,
+		ConfiguredPath: configPath,
+		GOOS:           "windows",
+	})
+	if err != nil {
+		t.Fatalf("resolve kubectl: %v", err)
+	}
+	if got != envPath {
+		t.Fatalf("path = %q, want env %q", got, envPath)
+	}
+}
+
+func TestResolveLocalExecutableFindsKubectlNextToDevConnect(t *testing.T) {
+	dir := t.TempDir()
+	devConnectPath := filepath.Join(dir, "dev-connect.exe")
+	kubectlPath := filepath.Join(dir, "kubectl.exe")
+	for _, path := range []string{devConnectPath, kubectlPath} {
+		if err := os.WriteFile(path, []byte("binary"), 0o600); err != nil {
+			t.Fatalf("write executable %s: %v", path, err)
+		}
+	}
+
+	got, err := ResolveLocalExecutable(ResolveOptions{
+		DevConnectPath: devConnectPath,
+		GOOS:           "windows",
+	})
+	if err != nil {
+		t.Fatalf("resolve kubectl: %v", err)
+	}
+	if got != kubectlPath {
+		t.Fatalf("path = %q, want adjacent kubectl %q", got, kubectlPath)
+	}
+}
+
+func TestResolveLocalExecutableUsesAdditionalDefaultPath(t *testing.T) {
+	defaultPath := writePlainExecutable(t, "kubectl-default.exe")
+
+	got, err := ResolveLocalExecutable(ResolveOptions{
+		GOOS:              "windows",
+		AdditionalDefault: []string{defaultPath},
+	})
+	if err != nil {
+		t.Fatalf("resolve kubectl: %v", err)
+	}
+	if got != defaultPath {
+		t.Fatalf("path = %q, want default %q", got, defaultPath)
+	}
+}
+
 func writeFakeExecutable(t *testing.T, dir, name, content string) string {
 	t.Helper()
 
@@ -330,6 +401,16 @@ func writeFakeExecutable(t *testing.T, dir, name, content string) string {
 	path := filepath.Join(dir, name)
 	if err := os.WriteFile(path, []byte(content), 0o700); err != nil {
 		t.Fatalf("write fake executable: %v", err)
+	}
+	return path
+}
+
+func writePlainExecutable(t *testing.T, name string) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte("binary"), 0o700); err != nil {
+		t.Fatalf("write executable: %v", err)
 	}
 	return path
 }

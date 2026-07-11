@@ -11,7 +11,7 @@ Example:
 
 ```sh
 helm install dev-connect-dev01 oci://ghcr.io/anwendt/charts/dev-connect-gateway \
-  --version 0.2.4 \
+  --version 0.2.5 \
   --namespace dev-connect \
   --create-namespace
 ```

@@ -27,6 +27,7 @@ reference. For example, target `dev01` uses `hostKeys.dev01`.
 | `dev01-basic.yaml` | Minimal single-cluster configuration without proxy override. |
 | `dev01-proxy.yaml` | Single-cluster configuration with a process-scoped proxy override for `kubectl`. |
 | `multi-cluster-proxy.yaml` | Multiple Rancher/Kubernetes contexts, multiple gateways, and per-cluster proxy settings. |
+| `windows-bundled-kubectl.yaml` | Windows configuration that points to a bundled `kubectl.exe` next to `dev-connect.exe`. |
 
 ## Usage
 
@@ -52,6 +53,21 @@ Select a named dev-connect context:
 
 ```text
 dev-connect --config examples/config/multi-cluster-proxy.yaml --context central-dev connect dev01
+```
+
+## kubectl Discovery
+
+`dev-connect` delegates all Kubernetes communication to a `kubectl` subprocess.
+Windows users do not need a global `kubectl` installation when they use the
+Windows bundle release artifact. The client searches for `kubectl.exe` next to
+`dev-connect.exe` before falling back to `PATH` and default locations.
+
+You can also set a cluster-specific path:
+
+```yaml
+clusters:
+  central-dev:
+    kubectlPath: C:\Program Files\dev-connect\kubectl.exe
 ```
 
 ## Proxy Behavior

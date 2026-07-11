@@ -21,23 +21,72 @@ type ExecutableRunner struct {
 	BaseEnv []string
 }
 
+// ResolveOptions describes kubectl executable discovery inputs.
+type ResolveOptions struct {
+	ExplicitPath      string
+	EnvPath           string
+	ConfiguredPath    string
+	DevConnectPath    string
+	PathEnv           string
+	GOOS              string
+	AdditionalDefault []string
+}
+
+// ResolveLocalExecutable locates kubectl using dev-connect precedence.
+func ResolveLocalExecutable(options ResolveOptions) (string, error) {
+	goos := options.GOOS
+	if goos == "" {
+		goos = runtime.GOOS
+	}
+
+	for _, path := range []string{options.ExplicitPath, options.EnvPath, options.ConfiguredPath} {
+		if path == "" {
+			continue
+		}
+		return ResolveExecutableForOS(goos, path, nil)
+	}
+
+	if options.DevConnectPath != "" {
+		candidate := filepath.Join(filepath.Dir(options.DevConnectPath), executableNameForOS("kubectl", goos))
+		if path, err := executablePathForOS(goos, candidate); err == nil {
+			return path, nil
+		}
+	}
+
+	searchPaths := filepath.SplitList(options.PathEnv)
+	if path, err := ResolveExecutableForOS(goos, "kubectl", searchPaths); err == nil {
+		return path, nil
+	}
+
+	defaults := append(defaultKubectlPaths(goos), options.AdditionalDefault...)
+	for _, candidate := range defaults {
+		if path, err := executablePathForOS(goos, candidate); err == nil {
+			return path, nil
+		}
+	}
+
+	return "", errors.New("kubectl executable not found; set --kubectl-path, DEV_CONNECT_KUBECTL_PATH, clusters.<name>.kubectlPath, install kubectl in PATH, or place kubectl next to dev-connect")
+}
+
 // ResolveExecutable locates a kubectl executable in the supplied search paths.
 func ResolveExecutable(name string, searchPaths []string) (string, error) {
+	return ResolveExecutableForOS(runtime.GOOS, name, searchPaths)
+}
+
+// ResolveExecutableForOS locates an executable using OS-specific naming rules.
+func ResolveExecutableForOS(goos, name string, searchPaths []string) (string, error) {
 	if name == "" {
 		return "", errors.New("executable name is required")
 	}
 	if filepath.IsAbs(name) {
-		return executablePath(name)
+		return executablePathForOS(goos, name)
 	}
 	for _, dir := range searchPaths {
 		if dir == "" {
 			continue
 		}
-		candidate := filepath.Join(dir, name)
-		if runtime.GOOS == "windows" && filepath.Ext(candidate) == "" {
-			candidate += ".exe"
-		}
-		path, err := executablePath(candidate)
+		candidate := filepath.Join(dir, executableNameForOS(name, goos))
+		path, err := executablePathForOS(goos, candidate)
 		if err == nil {
 			return path, nil
 		}
@@ -254,6 +303,10 @@ func readyOutput(output string, ready ReadyFunc) bool {
 }
 
 func executablePath(path string) (string, error) {
+	return executablePathForOS(runtime.GOOS, path)
+}
+
+func executablePathForOS(goos, path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
@@ -261,7 +314,7 @@ func executablePath(path string) (string, error) {
 	if info.IsDir() {
 		return "", fmt.Errorf("%s is a directory", path)
 	}
-	if runtime.GOOS == "windows" {
+	if goos == "windows" {
 		switch strings.ToLower(filepath.Ext(path)) {
 		case ".exe", ".cmd", ".bat", ".com":
 			return path, nil
@@ -273,6 +326,36 @@ func executablePath(path string) (string, error) {
 		return "", fmt.Errorf("%s is not executable", path)
 	}
 	return path, nil
+}
+
+func executableNameForOS(name, goos string) string {
+	if goos == "windows" && filepath.Ext(name) == "" {
+		return name + ".exe"
+	}
+	return name
+}
+
+func defaultKubectlPaths(goos string) []string {
+	switch goos {
+	case "windows":
+		return []string{
+			`C:\Program Files\dev-connect\kubectl.exe`,
+			`C:\Program Files\Kubernetes\kubectl.exe`,
+			`C:\Windows\System32\kubectl.exe`,
+		}
+	case "darwin":
+		return []string{
+			"/opt/homebrew/bin/kubectl",
+			"/usr/local/bin/kubectl",
+			"/usr/bin/kubectl",
+		}
+	default:
+		return []string{
+			"/usr/local/bin/kubectl",
+			"/usr/bin/kubectl",
+			"/snap/bin/kubectl",
+		}
+	}
 }
 
 type streamName string

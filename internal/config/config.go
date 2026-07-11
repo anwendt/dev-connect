@@ -56,6 +56,7 @@ type Context struct {
 type Cluster struct {
 	Kubeconfig        string `json:"kubeconfig,omitempty"`
 	KubernetesContext string `json:"kubernetesContext,omitempty"`
+	KubectlPath       string `json:"kubectlPath,omitempty"`
 	Proxy             Proxy  `json:"proxy,omitempty"`
 }
 

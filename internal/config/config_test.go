@@ -85,6 +85,25 @@ hostKeys:
 	}
 }
 
+func TestParseClusterKubectlPath(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+clusters:
+  dev:
+    kubeconfig: /tmp/kubeconfig
+    kubernetesContext: rancher-dev
+    kubectlPath: /opt/dev-connect/kubectl
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if cfg.Clusters["dev"].KubectlPath != "/opt/dev-connect/kubectl" {
+		t.Fatalf("kubectlPath = %q", cfg.Clusters["dev"].KubectlPath)
+	}
+}
+
 func TestParseRejectsUnknownHostKeyReferenceWhenInventoryIsConfigured(t *testing.T) {
 	_, err := Parse([]byte(`
 apiVersion: dev-connect/v1
