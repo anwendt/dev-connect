@@ -1,6 +1,9 @@
 package proxy
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildEnvAppliesOverridesWithoutMutatingBase(t *testing.T) {
 	base := []string{
@@ -42,6 +45,33 @@ func TestBuildEnvReturnsCopyWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestBuildEnvReplacesWindowsProxyVariablesCaseInsensitively(t *testing.T) {
+	base := []string{
+		"Path=C:\\Windows\\System32",
+		"Https_Proxy=http://enterprise.example",
+		"No_Proxy=localhost",
+	}
+
+	got := buildEnvForOS("windows", base, Config{
+		Enabled:    true,
+		HTTPSProxy: "http://override.example",
+		NoProxy:    "localhost,127.0.0.1",
+	})
+
+	if valueOfCaseInsensitive(got, "HTTPS_PROXY") != "http://override.example" {
+		t.Fatalf("HTTPS_PROXY = %q", valueOfCaseInsensitive(got, "HTTPS_PROXY"))
+	}
+	if valueOfCaseInsensitive(got, "NO_PROXY") != "localhost,127.0.0.1" {
+		t.Fatalf("NO_PROXY = %q", valueOfCaseInsensitive(got, "NO_PROXY"))
+	}
+	if countKeyCaseInsensitive(got, "HTTPS_PROXY") != 1 {
+		t.Fatalf("HTTPS_PROXY entries = %d in %#v", countKeyCaseInsensitive(got, "HTTPS_PROXY"), got)
+	}
+	if countKeyCaseInsensitive(got, "NO_PROXY") != 1 {
+		t.Fatalf("NO_PROXY entries = %d in %#v", countKeyCaseInsensitive(got, "NO_PROXY"), got)
+	}
+}
+
 func valueOf(env []string, key string) string {
 	prefix := key + "="
 	for _, entry := range env {
@@ -50,4 +80,25 @@ func valueOf(env []string, key string) string {
 		}
 	}
 	return ""
+}
+
+func valueOfCaseInsensitive(env []string, key string) string {
+	for _, entry := range env {
+		name, value, ok := strings.Cut(entry, "=")
+		if ok && strings.EqualFold(name, key) {
+			return value
+		}
+	}
+	return ""
+}
+
+func countKeyCaseInsensitive(env []string, key string) int {
+	count := 0
+	for _, entry := range env {
+		name, _, ok := strings.Cut(entry, "=")
+		if ok && strings.EqualFold(name, key) {
+			count++
+		}
+	}
+	return count
 }
