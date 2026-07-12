@@ -221,6 +221,7 @@ package-windows-bundle: build-all
 	cp LICENSE dist/windows-amd64-bundle/LICENSE
 	cp README.md dist/windows-amd64-bundle/README.md
 	(cd dist/windows-amd64-bundle && zip -q ../dev-connect-$(VERSION)-windows-amd64-bundle.zip dev-connect.exe kubectl.exe LICENSE README.md)
+	rm -rf dist/windows-amd64-bundle
 
 checksums:
 	@if [ -d dist ]; then \
