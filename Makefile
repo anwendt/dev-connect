@@ -225,7 +225,7 @@ package-windows-bundle: build-all
 
 checksums:
 	@if [ -d dist ]; then \
-		(cd dist && find . -maxdepth 1 -type f -print | sed 's#^\./##' | sort | xargs shasum -a 256 > checksums.txt); \
+		(cd dist && find . -maxdepth 1 -type f ! -name checksums.txt -print | sed 's#^\./##' | sort | xargs shasum -a 256 > checksums.txt); \
 	else \
 		printf '%s\n' 'dist directory not found; run make build-all or make helm-package first.'; \
 		exit 1; \
