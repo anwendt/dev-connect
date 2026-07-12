@@ -90,20 +90,18 @@ Output model:
 Recommended package layout for later implementation:
 
 ```text
-client/
-  cmd/dev-connect/
-  internal/cli/
-  internal/config/
-  internal/kubectl/
-  internal/proxy/
-  internal/port/
-  internal/tunnel/
-  internal/sshconfig/
-  internal/vscode/
-  internal/session/
-  internal/logging/
-  internal/output/
-  internal/platform/
+cmd/dev-connect/
+internal/config/
+internal/kubectl/
+internal/proxy/
+internal/port/
+internal/tunnel/
+internal/sshconfig/
+internal/vscode/
+internal/session/
+internal/logging/
+internal/output/
+internal/platform/
 ```
 
 Package responsibilities:

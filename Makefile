@@ -134,8 +134,8 @@ helm-template:
 
 kustomize-build:
 	@if command -v $(KUSTOMIZE) >/dev/null 2>&1; then \
-		$(KUSTOMIZE) build kubernetes/base >/dev/null; \
-		$(KUSTOMIZE) build kubernetes/overlays/autoscaling >/dev/null; \
+		$(KUSTOMIZE) build deploy/kubernetes/base >/dev/null; \
+		$(KUSTOMIZE) build deploy/kubernetes/overlays/autoscaling >/dev/null; \
 	else \
 		printf '%s\n' 'kustomize not installed; skipping kustomize-build in local slice.'; \
 	fi

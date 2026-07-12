@@ -8,19 +8,19 @@ Phase 8 covers repository structure only. It intentionally does not include Go i
 
 Primary artifacts:
 
-- `repository-structure.md`
-- top-level repository directories
-- placeholder `README.md` files
+- `docs/design/repository-structure.md`
+- consolidated top-level repository directories
+- documentation directories below `docs/`
 
 ## Review Checklist
 
 Structure:
 
-- [x] Approved phase documentation directories are preserved.
-- [x] `docs/` exists for future documentation.
-- [x] `design/` exists for future ADRs and design notes.
+- [x] Approved phase documentation directories are preserved below `docs/`.
+- [x] `docs/` contains documentation, design, review, specification, and runbook material.
+- [x] `docs/design/` exists for ADRs and design notes.
 - [x] `gateway/` exists for future gateway implementation.
-- [x] `kubernetes/` exists for future Kustomize resources.
+- [x] `deploy/kubernetes/` exists for Kustomize resources.
 - [x] `charts/` exists for future Helm charts.
 - [x] `tests/` exists for future test suites.
 - [x] `examples/` exists for future sample configuration.
@@ -39,7 +39,7 @@ Safety:
 Traceability:
 
 - [x] Repository structure maps to approved phases.
-- [x] Placeholder READMEs explain intended ownership.
+- [x] Documentation indexes explain intended ownership.
 - [x] Phase 9 CI/CD work has a reserved location.
 
 ## Required Decisions Before Phase 9

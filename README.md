@@ -71,17 +71,14 @@ SSH authentication always happens on the target Linux development server.
 ## Repository Layout
 
 ```text
-architecture/                  Architecture documents
 charts/dev-connect-gateway/    Helm chart for the HAProxy gateway
-ci-cd/                         CI/CD design documentation
 cmd/dev-connect/               Go CLI entry point
+deploy/kubernetes/             Kustomize resources
 docs/                          User, operator, security, API, and runbook docs
 examples/config/               Validated client configuration examples
 gateway/haproxy/               Gateway container assets
 internal/                      Go implementation packages
-kubernetes/                    Kustomize resources
-security/                      Security design
-specification/                 Functional specification
+scripts/                       Developer and release helper scripts
 tests/                         Integration, security, E2E, and performance tests
 ```
 

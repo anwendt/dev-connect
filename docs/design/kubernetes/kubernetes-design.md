@@ -397,7 +397,7 @@ Kustomize shall be supported for platform GitOps workflows.
 Recommended structure for later implementation:
 
 ```text
-kubernetes/
+deploy/kubernetes/
   base/
     namespace.yaml
     serviceaccount.yaml

@@ -10,7 +10,7 @@ import (
 )
 
 func TestKubernetesBaseManifestsAreValidYAML(t *testing.T) {
-	for _, path := range kubernetesYAMLFiles(t, rootPath("kubernetes/base")) {
+	for _, path := range kubernetesYAMLFiles(t, rootPath("deploy/kubernetes/base")) {
 		for _, document := range yamlDocuments(t, path) {
 			var parsed map[string]any
 			if err := yaml.Unmarshal([]byte(document), &parsed); err != nil {
@@ -27,7 +27,7 @@ func TestKubernetesBaseManifestsAreValidYAML(t *testing.T) {
 }
 
 func TestNoPublicKubernetesExposure(t *testing.T) {
-	for _, path := range kubernetesYAMLFiles(t, rootPath("kubernetes/base")) {
+	for _, path := range kubernetesYAMLFiles(t, rootPath("deploy/kubernetes/base")) {
 		content := readText(t, path)
 		for _, forbidden := range []string{
 			"kind: Ingress",
@@ -42,7 +42,7 @@ func TestNoPublicKubernetesExposure(t *testing.T) {
 }
 
 func TestGatewayServicePortMapping(t *testing.T) {
-	content := readText(t, rootPath("kubernetes/base/service.yaml"))
+	content := readText(t, rootPath("deploy/kubernetes/base/service.yaml"))
 
 	assertContains(t, content, "type: ClusterIP")
 	assertContains(t, content, "port: 22")
@@ -50,7 +50,7 @@ func TestGatewayServicePortMapping(t *testing.T) {
 }
 
 func TestGatewayDeploymentPodSecurity(t *testing.T) {
-	content := readText(t, rootPath("kubernetes/base/deployment.yaml"))
+	content := readText(t, rootPath("deploy/kubernetes/base/deployment.yaml"))
 
 	for _, required := range []string{
 		"containerPort: 2222",
@@ -78,7 +78,7 @@ func TestGatewayDeploymentPodSecurity(t *testing.T) {
 }
 
 func TestHAProxyConfigIsTCPOnlyAndNonPrivileged(t *testing.T) {
-	content := readText(t, rootPath("kubernetes/base/configmap.yaml"))
+	content := readText(t, rootPath("deploy/kubernetes/base/configmap.yaml"))
 
 	assertContains(t, content, "mode tcp")
 	assertContains(t, content, "bind :2222")
@@ -93,7 +93,7 @@ func TestHAProxyConfigIsTCPOnlyAndNonPrivileged(t *testing.T) {
 }
 
 func TestRBACLeastPrivilege(t *testing.T) {
-	content := readText(t, rootPath("kubernetes/base/rbac.yaml"))
+	content := readText(t, rootPath("deploy/kubernetes/base/rbac.yaml"))
 
 	assertContains(t, content, "resources:")
 	assertContains(t, content, "pods/portforward")
@@ -115,7 +115,7 @@ func TestRBACLeastPrivilege(t *testing.T) {
 }
 
 func TestNetworkPolicyRestrictsEgressToSSHAndConditionalDNS(t *testing.T) {
-	content := readText(t, rootPath("kubernetes/base/networkpolicy.yaml"))
+	content := readText(t, rootPath("deploy/kubernetes/base/networkpolicy.yaml"))
 
 	assertContains(t, content, "policyTypes:")
 	assertContains(t, content, "Ingress")
@@ -127,9 +127,9 @@ func TestNetworkPolicyRestrictsEgressToSSHAndConditionalDNS(t *testing.T) {
 }
 
 func TestHPAIsProvidedButDisabledByDefaultForKustomizeBase(t *testing.T) {
-	base := readText(t, rootPath("kubernetes/base/kustomization.yaml"))
-	overlay := readText(t, rootPath("kubernetes/overlays/autoscaling/kustomization.yaml"))
-	hpa := readText(t, rootPath("kubernetes/overlays/autoscaling/hpa.yaml"))
+	base := readText(t, rootPath("deploy/kubernetes/base/kustomization.yaml"))
+	overlay := readText(t, rootPath("deploy/kubernetes/overlays/autoscaling/kustomization.yaml"))
+	hpa := readText(t, rootPath("deploy/kubernetes/overlays/autoscaling/hpa.yaml"))
 
 	assertNotContains(t, base, "hpa.yaml")
 	assertContains(t, overlay, "hpa.yaml")

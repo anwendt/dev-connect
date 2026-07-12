@@ -27,9 +27,9 @@ The guides are derived from approved phase artifacts:
 - `architecture/architecture.md`
 - `specification/functional-specification.md`
 - `non-functional-requirements/non-functional-requirements.md`
-- `kubernetes-design/kubernetes-design.md`
-- `client/client-design.md`
+- `design/kubernetes/kubernetes-design.md`
+- `design/client/client-design.md`
 - `security/security.md`
 - `testing/testing-strategy.md`
-- `repository-structure.md`
-- `ci-cd/ci-cd-design.md`
+- `design/repository-structure.md`
+- `design/ci-cd/ci-cd-design.md`
