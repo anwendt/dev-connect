@@ -331,7 +331,7 @@ func TestConnectWritesManagedUserSSHConfigWhenEnabled(t *testing.T) {
 		"HostName 127.0.0.1",
 		"Port 55221",
 		"UserKnownHostsFile ",
-		filepath.Join(sshDir, "known_hosts"),
+		"known_hosts",
 		"# END dev-connect dev01",
 	} {
 		if !strings.Contains(content, want) {

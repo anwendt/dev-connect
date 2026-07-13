@@ -37,6 +37,9 @@ func DefaultUserConfigPathFor(goos, home, userProfile string) (string, error) {
 	if base == "" {
 		return "", errors.New("home directory is required for SSH config path")
 	}
+	if goos != "windows" {
+		return strings.TrimRight(base, "/") + "/.ssh/config", nil
+	}
 	return filepath.Join(base, ".ssh", "config"), nil
 }
 
