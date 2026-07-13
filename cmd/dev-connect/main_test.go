@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anwendt/dev-connect/internal/config"
 	"github.com/anwendt/dev-connect/internal/session"
 )
 
@@ -76,6 +77,8 @@ func TestVersionOutputsVersionedJSON(t *testing.T) {
 }
 
 func TestStatusOutputsVersionedJSON(t *testing.T) {
+	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+
 	stdout := executeCommand(t, "status", "--output", "json")
 
 	got := decodeJSON(t, stdout)
@@ -368,6 +371,55 @@ func TestConnectUsesClusterKubectlPathFromConfig(t *testing.T) {
 	}
 }
 
+func TestKubectlBaseEnvSetsConfiguredKubeconfig(t *testing.T) {
+	got := kubectlBaseEnvFrom([]string{"PATH=/usr/bin"}, "linux", config.Cluster{
+		Kubeconfig: "/home/developer/.kube/central-dev.yaml",
+	})
+
+	if !containsEnv(got, "KUBECONFIG=/home/developer/.kube/central-dev.yaml") {
+		t.Fatalf("KUBECONFIG missing from env: %#v", got)
+	}
+}
+
+func TestKubectlBaseEnvReplacesWindowsKubeconfigCaseInsensitively(t *testing.T) {
+	got := kubectlBaseEnvFrom([]string{
+		"Path=C:\\Windows\\System32",
+		"kubeconfig=C:\\Users\\developer\\.kube\\old.yaml",
+	}, "windows", config.Cluster{
+		Kubeconfig: `C:\Users\developer\.kube\central-dev-cluster.yaml`,
+	})
+
+	if !containsEnv(got, `KUBECONFIG=C:\Users\developer\.kube\central-dev-cluster.yaml`) {
+		t.Fatalf("KUBECONFIG was not replaced case-insensitively: %#v", got)
+	}
+	if containsEnv(got, `kubeconfig=C:\Users\developer\.kube\old.yaml`) {
+		t.Fatalf("old kubeconfig env remained: %#v", got)
+	}
+}
+
+func TestKubectlBaseEnvKeepsProxyOverrides(t *testing.T) {
+	got := kubectlBaseEnvFrom([]string{"PATH=/usr/bin"}, "linux", config.Cluster{
+		Kubeconfig: "/home/developer/.kube/central-dev.yaml",
+		Proxy: config.Proxy{
+			Enabled:    true,
+			HTTPSProxy: "http://proxy.example.corp:8080",
+			NoProxy:    "127.0.0.1,localhost",
+		},
+	})
+
+	for _, want := range []string{
+		"KUBECONFIG=/home/developer/.kube/central-dev.yaml",
+		"HTTPS_PROXY=http://proxy.example.corp:8080",
+		"https_proxy=http://proxy.example.corp:8080",
+		"NO_PROXY=127.0.0.1,localhost",
+		"no_proxy=127.0.0.1,localhost",
+	} {
+		if !containsEnv(got, want) {
+			t.Fatalf("env missing %q: %#v", want, got)
+		}
+	}
+}
+
 func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
 	configPath := writeCLIConfig(t)
 	sessionDir := t.TempDir()
@@ -388,6 +440,15 @@ func TestConnectFailsWhenKubectlRBACDenied(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); !os.IsNotExist(err) {
 		t.Fatalf("session state was not cleaned after preflight failure: %v", err)
 	}
+}
+
+func containsEnv(env []string, want string) bool {
+	for _, entry := range env {
+		if entry == want {
+			return true
+		}
+	}
+	return false
 }
 
 func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
@@ -548,6 +609,8 @@ func TestLogFormatAndOutputFlagsAreIndependent(t *testing.T) {
 }
 
 func TestLifecycleMetadataLogsUseStderr(t *testing.T) {
+	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+
 	stdout, stderr := executeCommandStreams(t, "--log-format", "json", "--output", "json", "status")
 
 	got := decodeJSON(t, stdout)

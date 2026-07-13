@@ -8,8 +8,10 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -267,13 +269,8 @@ func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, r
 	}
 
 	runner := kubectl.ExecutableRunner{
-		Path: kubectlPath,
-		BaseEnv: proxy.BuildEnv(os.Environ(), proxy.Config{
-			Enabled:    cluster.Proxy.Enabled,
-			HTTPProxy:  cluster.Proxy.HTTPProxy,
-			HTTPSProxy: cluster.Proxy.HTTPSProxy,
-			NoProxy:    cluster.Proxy.NoProxy,
-		}),
+		Path:    kubectlPath,
+		BaseEnv: kubectlBaseEnv(cluster),
 	}
 	return tunnel.Supervisor{Runner: runner, MaxReconnects: 3}.Start(ctx, tunnel.StartOptions{
 		Namespace:   result.Gateway.Namespace,
@@ -319,13 +316,8 @@ func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, 
 	}
 
 	runner := kubectl.ExecutableRunner{
-		Path: kubectlPath,
-		BaseEnv: proxy.BuildEnv(os.Environ(), proxy.Config{
-			Enabled:    cluster.Proxy.Enabled,
-			HTTPProxy:  cluster.Proxy.HTTPProxy,
-			HTTPSProxy: cluster.Proxy.HTTPSProxy,
-			NoProxy:    cluster.Proxy.NoProxy,
-		}),
+		Path:    kubectlPath,
+		BaseEnv: kubectlBaseEnv(cluster),
 	}
 
 	_, err = preflight.Validate(ctx, preflight.Options{
@@ -338,6 +330,38 @@ func runPreflight(ctx context.Context, opts cliOptions, cluster config.Cluster, 
 		Kubeconfig:  cluster.Kubeconfig,
 	})
 	return err
+}
+
+func kubectlBaseEnv(cluster config.Cluster) []string {
+	return kubectlBaseEnvFrom(os.Environ(), runtime.GOOS, cluster)
+}
+
+func kubectlBaseEnvFrom(base []string, goos string, cluster config.Cluster) []string {
+	env := proxy.BuildEnv(base, proxy.Config{
+		Enabled:    cluster.Proxy.Enabled,
+		HTTPProxy:  cluster.Proxy.HTTPProxy,
+		HTTPSProxy: cluster.Proxy.HTTPSProxy,
+		NoProxy:    cluster.Proxy.NoProxy,
+	})
+	if cluster.Kubeconfig == "" {
+		return env
+	}
+	return setProcessEnv(goos, env, "KUBECONFIG", cluster.Kubeconfig)
+}
+
+func setProcessEnv(goos string, env []string, key, value string) []string {
+	prefix := key + "="
+	for i, entry := range env {
+		name, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
+		}
+		if name == key || (goos == "windows" && strings.EqualFold(name, key)) {
+			env[i] = prefix + value
+			return env
+		}
+	}
+	return append(env, prefix+value)
 }
 
 func selectedCluster(cfg config.Config, opts cliOptions) (config.Cluster, error) {

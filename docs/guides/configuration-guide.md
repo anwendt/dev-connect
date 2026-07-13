@@ -210,10 +210,14 @@ Example:
 ```yaml
 clusters:
   central-dev:
-    kubeconfig: C:\Users\developer\.kube\central-dev-cluster.yaml
+    kubeconfig: 'C:\Users\developer\.kube\central-dev-cluster.yaml'
     kubernetesContext: ""
-    kubectlPath: C:\Program Files\dev-connect\kubectl.exe
+    kubectlPath: 'C:\Program Files\dev-connect\kubectl.exe'
 ```
+
+Use single quotes for Windows paths in YAML. Do not use double quotes unless
+backslashes are escaped, because YAML treats sequences such as `\U` as escape
+syntax.
 
 ## Proxy Overrides
 

@@ -68,6 +68,22 @@ func TestBuildVersionCommand(t *testing.T) {
 	}
 }
 
+func TestBuildVersionCommandPreservesWindowsKubeconfigPath(t *testing.T) {
+	kubeconfigPath := `C:\Users\developer\.kube\central-dev-cluster.yaml`
+	cmd := VersionCommand(VersionOptions{
+		Kubeconfig: kubeconfigPath,
+	})
+
+	want := []string{
+		"--kubeconfig", kubeconfigPath,
+		"version",
+	}
+
+	if !equalStrings(cmd.Args, want) {
+		t.Fatalf("args = %#v, want %#v", cmd.Args, want)
+	}
+}
+
 func TestFakeRunnerRecordsCommands(t *testing.T) {
 	runner := NewFakeRunner(FakeResult{Stdout: "yes\n"})
 

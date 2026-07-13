@@ -124,6 +124,34 @@ clusters:
 	}
 }
 
+func TestParseWindowsClusterPaths(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+clusters:
+  central-dev:
+    kubeconfig: 'C:\Users\developer\.kube\central-dev-cluster.yaml'
+    kubernetesContext: rancher-dev
+    kubectlPath: 'C:\Program Files\dev-connect\kubectl.exe'
+targets:
+  dev01:
+    gateway: dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakePinnedHostKey dev01
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	cluster := cfg.Clusters["central-dev"]
+	if cluster.Kubeconfig != `C:\Users\developer\.kube\central-dev-cluster.yaml` {
+		t.Fatalf("kubeconfig = %q", cluster.Kubeconfig)
+	}
+	if cluster.KubectlPath != `C:\Program Files\dev-connect\kubectl.exe` {
+		t.Fatalf("kubectlPath = %q", cluster.KubectlPath)
+	}
+}
+
 func TestParseVSCodeIsolatedUserDataDir(t *testing.T) {
 	cfg, err := Parse([]byte(`
 apiVersion: dev-connect/v1
