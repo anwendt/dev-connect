@@ -85,7 +85,8 @@ type Target struct {
 
 // VSCode describes VS Code launcher configuration.
 type VSCode struct {
-	LauncherPath string `json:"launcherPath,omitempty"`
+	LauncherPath        string `json:"launcherPath,omitempty"`
+	IsolatedUserDataDir bool   `json:"isolatedUserDataDir,omitempty"`
 }
 
 // Load reads and validates the first available configuration source.

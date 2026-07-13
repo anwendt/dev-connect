@@ -104,6 +104,26 @@ clusters:
 	}
 }
 
+func TestParseVSCodeIsolatedUserDataDir(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+vscode:
+  launcherPath: /Applications/Visual Studio Code.app/Contents/Resources/app/bin/code
+  isolatedUserDataDir: true
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if !cfg.VSCode.IsolatedUserDataDir {
+		t.Fatal("isolatedUserDataDir was not parsed")
+	}
+	if cfg.VSCode.LauncherPath == "" {
+		t.Fatal("launcherPath was not parsed")
+	}
+}
+
 func TestParseRejectsUnknownHostKeyReferenceWhenInventoryIsConfigured(t *testing.T) {
 	_, err := Parse([]byte(`
 apiVersion: dev-connect/v1

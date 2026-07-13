@@ -175,17 +175,19 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			}
 
 			if !opts.noCode {
-				vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
-				if err := vscode.PrepareUserDataDir(vscodeUserDataDir, result.State.SSHConfigPath); err != nil {
-					_ = cleanupSessionArtifacts(result.State)
-					_ = (session.Store{Dir: result.SessionDir}).Clear()
-					return err
-				}
-				result.State.VSCodeUserDataDir = vscodeUserDataDir
-				if err := (session.Store{Dir: result.SessionDir}).Save(result.State); err != nil {
-					_ = cleanupSessionArtifacts(result.State)
-					_ = (session.Store{Dir: result.SessionDir}).Clear()
-					return err
+				if loaded.Config.VSCode.IsolatedUserDataDir {
+					vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
+					if err := vscode.PrepareUserDataDir(vscodeUserDataDir, result.State.SSHConfigPath); err != nil {
+						_ = cleanupSessionArtifacts(result.State)
+						_ = (session.Store{Dir: result.SessionDir}).Clear()
+						return err
+					}
+					result.State.VSCodeUserDataDir = vscodeUserDataDir
+					if err := (session.Store{Dir: result.SessionDir}).Save(result.State); err != nil {
+						_ = cleanupSessionArtifacts(result.State)
+						_ = (session.Store{Dir: result.SessionDir}).Clear()
+						return err
+					}
 				}
 				if err := launchVSCode(cmd.Context(), loaded.Config, args[0], result.State.VSCodeUserDataDir); err != nil {
 					_ = cleanupSessionArtifacts(result.State)

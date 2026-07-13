@@ -294,6 +294,8 @@ Default Linux paths:
 Behavior:
 
 - Launch VS Code Desktop Remote SSH target.
+- Use the normal VS Code user profile by default so existing GitHub and Copilot authentication remains available.
+- Support `vscode.isolatedUserDataDir: true` for a session-scoped VS Code profile that points Remote SSH at the generated temporary SSH config.
 - Do not launch browser-based VS Code.
 - Do not install extensions.
 - Do not manage GitHub Copilot.

@@ -88,3 +88,16 @@ When `enabled: true`, `dev-connect` applies the configured values only to the
 
 Use a proxy override only when the default enterprise workstation proxy settings
 are not sufficient for the selected Kubernetes or Rancher endpoint.
+
+## VS Code Profile Behavior
+
+The examples use the normal VS Code user profile:
+
+```yaml
+vscode:
+  isolatedUserDataDir: false
+```
+
+This keeps existing GitHub sign-in state, GitHub Copilot authentication, local
+settings, and locally installed extensions available. If a stricter isolated
+profile is required, set `isolatedUserDataDir: true`.
