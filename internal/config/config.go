@@ -43,6 +43,7 @@ type Config struct {
 	Gateways   map[string]Gateway `json:"gateways,omitempty"`
 	Targets    map[string]Target  `json:"targets,omitempty"`
 	HostKeys   map[string]string  `json:"hostKeys,omitempty"`
+	SSH        SSH                `json:"ssh,omitempty"`
 	VSCode     VSCode             `json:"vscode,omitempty"`
 }
 
@@ -81,6 +82,12 @@ type Target struct {
 	User         string `json:"user,omitempty"`
 	IdentityFile string `json:"identityFile,omitempty"`
 	HostKeyRef   string `json:"hostKeyRef,omitempty"`
+}
+
+// SSH describes optional user SSH configuration management.
+type SSH struct {
+	ManageUserConfig bool   `json:"manageUserConfig,omitempty"`
+	UserConfigPath   string `json:"userConfigPath,omitempty"`
 }
 
 // VSCode describes VS Code launcher configuration.

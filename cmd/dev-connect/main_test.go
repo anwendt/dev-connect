@@ -112,6 +112,7 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 	sessionDir := t.TempDir()
 	sshConfigPath := filepath.Join(t.TempDir(), "ssh_config")
 	knownHostsPath := filepath.Join(t.TempDir(), "known_hosts")
+	userSSHConfigPath := filepath.Join(t.TempDir(), ".ssh", "config")
 	vscodeUserDataDir := filepath.Join(t.TempDir(), "vscode-user-data")
 	if err := os.WriteFile(sshConfigPath, []byte("Host dev01\n"), 0o600); err != nil {
 		t.Fatalf("write ssh config: %v", err)
@@ -122,7 +123,23 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(vscodeUserDataDir, "User"), 0o700); err != nil {
 		t.Fatalf("create VS Code user data dir: %v", err)
 	}
-	writeSessionStateWithVSCodeUserDataDir(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir)
+	if err := os.MkdirAll(filepath.Dir(userSSHConfigPath), 0o700); err != nil {
+		t.Fatalf("create user ssh dir: %v", err)
+	}
+	userConfig := strings.Join([]string{
+		"# BEGIN dev-connect dev01",
+		"Host dev01",
+		"  HostName 127.0.0.1",
+		"# END dev-connect dev01",
+		"",
+		"Host github.com",
+		"  User git",
+		"",
+	}, "\n")
+	if err := os.WriteFile(userSSHConfigPath, []byte(userConfig), 0o600); err != nil {
+		t.Fatalf("write user ssh config: %v", err)
+	}
+	writeSessionStateWithVSCodeUserDataDirAndUserSSHConfig(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, userSSHConfigPath)
 	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
 
 	stdout := executeCommand(t, "disconnect", "--output", "json")
@@ -134,6 +151,16 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("%s still exists or unexpected stat error: %v", path, err)
 		}
+	}
+	remainingUserConfig, err := os.ReadFile(userSSHConfigPath)
+	if err != nil {
+		t.Fatalf("read user ssh config: %v", err)
+	}
+	if strings.Contains(string(remainingUserConfig), "dev-connect dev01") {
+		t.Fatalf("managed user SSH config block was not removed:\n%s", string(remainingUserConfig))
+	}
+	if !strings.Contains(string(remainingUserConfig), "Host github.com") {
+		t.Fatalf("unmanaged user SSH config content was removed:\n%s", string(remainingUserConfig))
 	}
 }
 
@@ -183,13 +210,19 @@ func writeSessionStateWithPID(t *testing.T, sessionDir, sshConfigPath, knownHost
 	writeSessionStateData(t, sessionDir, sshConfigPath, knownHostsPath, "", portForwardPID)
 }
 
-func writeSessionStateWithVSCodeUserDataDir(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir string) {
+func writeSessionStateWithVSCodeUserDataDirAndUserSSHConfig(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, userSSHConfigPath string) {
 	t.Helper()
 
-	writeSessionStateData(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, 0)
+	writeSessionStateDataWithUserSSHConfig(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, userSSHConfigPath, 0)
 }
 
 func writeSessionStateData(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir string, portForwardPID int) {
+	t.Helper()
+
+	writeSessionStateDataWithUserSSHConfig(t, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, "", portForwardPID)
+}
+
+func writeSessionStateDataWithUserSSHConfig(t *testing.T, sessionDir, sshConfigPath, knownHostsPath, vscodeUserDataDir, userSSHConfigPath string, portForwardPID int) {
 	t.Helper()
 
 	if err := os.MkdirAll(sessionDir, 0o700); err != nil {
@@ -204,6 +237,7 @@ func writeSessionStateData(t *testing.T, sessionDir, sshConfigPath, knownHostsPa
 		PortForwardPID:    portForwardPID,
 		SSHConfigPath:     sshConfigPath,
 		KnownHostsPath:    knownHostsPath,
+		UserSSHConfigPath: userSSHConfigPath,
 		VSCodeUserDataDir: vscodeUserDataDir,
 		Reconnect:         false,
 	}
@@ -267,6 +301,53 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(sshDir, "ssh_config")); err != nil {
 		t.Fatalf("ssh config was not written: %v", err)
+	}
+}
+
+func TestConnectWritesManagedUserSSHConfigWhenEnabled(t *testing.T) {
+	userSSHConfigPath := filepath.Join(t.TempDir(), ".ssh", "config")
+	configPath := writeCLIConfigWithManagedUserSSHConfig(t, userSSHConfigPath)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", sshDir)
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
+
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", got["status"])
+	}
+	data, err := os.ReadFile(userSSHConfigPath)
+	if err != nil {
+		t.Fatalf("read managed user SSH config: %v", err)
+	}
+	content := string(data)
+	for _, want := range []string{
+		"# BEGIN dev-connect dev01",
+		"Host dev01",
+		"HostName 127.0.0.1",
+		"Port 55221",
+		"UserKnownHostsFile ",
+		filepath.Join(sshDir, "known_hosts"),
+		"# END dev-connect dev01",
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("managed user SSH config missing %q:\n%s", want, content)
+		}
+	}
+	stateData, err := os.ReadFile(filepath.Join(sessionDir, "session.json"))
+	if err != nil {
+		t.Fatalf("read session state: %v", err)
+	}
+	var state session.State
+	if err := json.Unmarshal(stateData, &state); err != nil {
+		t.Fatalf("decode session state: %v", err)
+	}
+	if state.UserSSHConfigPath != userSSHConfigPath {
+		t.Fatalf("user SSH config path = %q, want %q", state.UserSSHConfigPath, userSSHConfigPath)
 	}
 }
 
@@ -609,6 +690,16 @@ func writeCLIConfigWithNormalVSCodeLauncher(t *testing.T, launcherPath string) s
 vscode:
   launcherPath: `+launcherPath+`
   isolatedUserDataDir: false
+`)
+}
+
+func writeCLIConfigWithManagedUserSSHConfig(t *testing.T, userSSHConfigPath string) string {
+	t.Helper()
+
+	return writeCLIConfigData(t, `
+ssh:
+  manageUserConfig: true
+  userConfigPath: `+yamlSingleQuoted(userSSHConfigPath)+`
 `)
 }
 

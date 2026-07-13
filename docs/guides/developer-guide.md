@@ -140,6 +140,19 @@ authentication, local settings, and locally installed extensions remain
 available. In this mode, the target alias must also exist in the user's normal
 Remote SSH configuration.
 
+To let `dev-connect` manage that normal SSH configuration entry during the
+session, enable:
+
+```yaml
+ssh:
+  manageUserConfig: true
+vscode:
+  isolatedUserDataDir: false
+```
+
+`connect` writes a marked block to the user's OpenSSH config, and `disconnect`
+removes only that block again.
+
 VS Code installs or updates VS Code Server on the target development server according to normal VS Code Remote SSH behavior.
 
 GitHub Copilot continues to run locally inside VS Code Desktop. The gateway does not execute Copilot and does not inspect VS Code or SSH payloads.

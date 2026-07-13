@@ -85,6 +85,26 @@ hostKeys:
 	}
 }
 
+func TestParseSSHUserConfigManagement(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+ssh:
+  manageUserConfig: true
+  userConfigPath: /Users/developer/.ssh/config
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if !cfg.SSH.ManageUserConfig {
+		t.Fatal("manageUserConfig was not parsed")
+	}
+	if cfg.SSH.UserConfigPath != "/Users/developer/.ssh/config" {
+		t.Fatalf("userConfigPath = %q", cfg.SSH.UserConfigPath)
+	}
+}
+
 func TestParseClusterKubectlPath(t *testing.T) {
 	cfg, err := Parse([]byte(`
 apiVersion: dev-connect/v1

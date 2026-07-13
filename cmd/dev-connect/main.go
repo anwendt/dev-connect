@@ -174,6 +174,34 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				}
 			}
 
+			if loaded.Config.SSH.ManageUserConfig {
+				userSSHConfigPath, err := userSSHConfigPath(loaded.Config.SSH.UserConfigPath)
+				if err != nil {
+					_ = cleanupSessionArtifacts(result.State)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+				if err := sshconfig.UpsertManagedBlock(sshconfig.UserConfigOptions{
+					ConfigPath:     userSSHConfigPath,
+					Alias:          result.TargetName,
+					User:           result.Target.User,
+					IdentityFile:   result.Target.IdentityFile,
+					LocalHost:      result.LocalHost,
+					LocalPort:      result.LocalPort,
+					KnownHostsPath: result.State.KnownHostsPath,
+				}); err != nil {
+					_ = cleanupSessionArtifacts(result.State)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+				result.State.UserSSHConfigPath = userSSHConfigPath
+				if err := (session.Store{Dir: result.SessionDir}).Save(result.State); err != nil {
+					_ = cleanupSessionArtifacts(result.State)
+					_ = (session.Store{Dir: result.SessionDir}).Clear()
+					return err
+				}
+			}
+
 			if !opts.noCode {
 				if loaded.Config.VSCode.UseIsolatedUserDataDir() {
 					vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
@@ -369,6 +397,13 @@ func sshDir(sessionDir string) (string, error) {
 	return filepath.Join(sessionDir, "ssh"), nil
 }
 
+func userSSHConfigPath(configuredPath string) (string, error) {
+	if configuredPath != "" {
+		return configuredPath, nil
+	}
+	return sshconfig.DefaultUserConfigPath()
+}
+
 func allocatePort() (port.Allocation, error) {
 	if value := os.Getenv("DEV_CONNECT_TEST_LOCAL_PORT"); value != "" {
 		localPort, err := strconv.Atoi(value)
@@ -501,6 +536,9 @@ func logCommand(cmd *cobra.Command, opts cliOptions, commandName string, respons
 }
 
 func cleanupSessionArtifacts(state session.State) error {
+	if err := sshconfig.RemoveManagedBlock(state.UserSSHConfigPath, state.Target); err != nil {
+		return err
+	}
 	if err := sshconfig.Cleanup(sshconfig.SessionFiles{
 		ConfigPath:     state.SSHConfigPath,
 		KnownHostsPath: state.KnownHostsPath,

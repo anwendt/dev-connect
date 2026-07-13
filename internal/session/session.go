@@ -31,6 +31,7 @@ type State struct {
 	PortForwardPID    int       `json:"portForwardPid,omitempty"`
 	SSHConfigPath     string    `json:"sshConfigPath,omitempty"`
 	KnownHostsPath    string    `json:"knownHostsPath,omitempty"`
+	UserSSHConfigPath string    `json:"userSshConfigPath,omitempty"`
 	VSCodeUserDataDir string    `json:"vscodeUserDataDir,omitempty"`
 	StartedAt         time.Time `json:"startedAt,omitempty"`
 	Reconnect         bool      `json:"reconnect"`

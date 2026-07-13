@@ -22,6 +22,9 @@ targets:
     identityFile: /Users/developer/.ssh/dev01
 hostKeys:
   dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+ssh:
+  manageUserConfig: false
+  userConfigPath: ""
 vscode:
   launcherPath: ""
   isolatedUserDataDir: true

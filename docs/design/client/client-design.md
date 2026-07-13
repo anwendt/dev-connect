@@ -113,6 +113,7 @@ Package responsibilities:
 - `port`: loopback port allocation.
 - `tunnel`: managed `kubectl port-forward` lifecycle.
 - `sshconfig`: temporary SSH config and temporary `known_hosts` generation.
+- `sshconfig`: optional managed user OpenSSH config block lifecycle.
 - `vscode`: VS Code launcher discovery and Remote SSH invocation.
 - `session`: state file, lock file, PID validation, stale cleanup.
 - `logging`: redacted structured logs.
@@ -296,6 +297,7 @@ Behavior:
 - Launch VS Code Desktop Remote SSH target.
 - Use a session-scoped VS Code profile by default so Remote SSH can read the generated temporary SSH config.
 - Support `vscode.isolatedUserDataDir: false` for using the normal VS Code user profile when the target alias is already resolvable there.
+- Support `ssh.manageUserConfig: true` for normal VS Code profile mode by adding and later removing a marked user OpenSSH config block.
 - Do not launch browser-based VS Code.
 - Do not install extensions.
 - Do not manage GitHub Copilot.

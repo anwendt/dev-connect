@@ -72,6 +72,7 @@ In scope:
 - Local TCP port allocation.
 - `kubectl port-forward` process management.
 - Temporary SSH configuration generation.
+- Optional managed user OpenSSH config block creation and removal.
 - VS Code Desktop launch for Remote SSH.
 - Session state management.
 - Tunnel monitoring.
@@ -535,6 +536,8 @@ Functional requirements:
 - The CLI shall allow `--no-code` for tunnel-only operation.
 - The CLI shall use a session-scoped VS Code user-data directory by default.
 - The CLI shall support `vscode.isolatedUserDataDir: false` for normal local VS Code profile mode when the target alias is resolvable there.
+- The CLI shall support `ssh.manageUserConfig: true` to write a marked dev-connect block to the user's OpenSSH config during `connect`.
+- The CLI shall remove only the marked dev-connect OpenSSH config block during `disconnect`.
 - The CLI shall fail clearly when VS Code cannot be launched.
 - The CLI shall not install or manage VS Code extensions.
 - The CLI shall not run browser-based VS Code.

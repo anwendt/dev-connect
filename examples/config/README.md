@@ -102,3 +102,17 @@ This allows `dev-connect` to pass the generated temporary SSH config to VS Code
 Remote SSH without changing the user's normal VS Code settings. To use the
 normal VS Code user profile, set `isolatedUserDataDir: false` and make sure the
 target alias is resolvable through the user's normal Remote SSH configuration.
+
+For GitHub Copilot/browser authentication flows that should use the normal VS
+Code profile, enable managed user SSH config as well:
+
+```yaml
+ssh:
+  manageUserConfig: true
+  userConfigPath: ""
+vscode:
+  isolatedUserDataDir: false
+```
+
+`dev-connect connect` writes only a marked `dev-connect` block to the user's
+OpenSSH config. `dev-connect disconnect` removes that block again.

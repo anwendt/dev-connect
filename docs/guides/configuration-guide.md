@@ -84,6 +84,9 @@ targets:
     gateway: dev01
     user: developer
     identityFile: /Users/developer/.ssh/dev01
+ssh:
+  manageUserConfig: false
+  userConfigPath: ""
 vscode:
   launcherPath: ""
   isolatedUserDataDir: true
@@ -128,6 +131,60 @@ locally installed extensions remain available. In this mode, VS Code Remote SSH
 must be able to resolve the target alias through the user's normal Remote SSH
 configuration because `dev-connect` does not modify the user's global VS Code
 settings.
+
+## User SSH Config Management
+
+`ssh.manageUserConfig` controls whether `dev-connect` writes a managed block to
+the user's normal OpenSSH config during `connect` and removes it during
+`disconnect`.
+
+Default:
+
+```yaml
+ssh:
+  manageUserConfig: false
+  userConfigPath: ""
+```
+
+When enabled, `dev-connect` writes a block like this:
+
+```sshconfig
+# BEGIN dev-connect dev01
+Host dev01
+  HostName 127.0.0.1
+  Port 55221
+  User developer
+  IdentityFile "/Users/developer/.ssh/dev01"
+  UserKnownHostsFile "/path/to/dev-connect/session/ssh/known_hosts"
+  StrictHostKeyChecking yes
+  IdentitiesOnly yes
+# END dev-connect dev01
+```
+
+Only the block between the `BEGIN` and `END` markers is managed. Existing user
+SSH configuration outside that block is preserved.
+
+Default config paths:
+
+- Windows: `%USERPROFILE%\.ssh\config`
+- Linux: `~/.ssh/config`
+- macOS: `~/.ssh/config`
+
+`userConfigPath` may be set to override the default path.
+
+For GitHub Copilot and browser authentication flows that should use the normal
+VS Code profile, use:
+
+```yaml
+ssh:
+  manageUserConfig: true
+  userConfigPath: ""
+vscode:
+  isolatedUserDataDir: false
+```
+
+With this combination, VS Code uses the normal local profile while OpenSSH can
+resolve the dev-connect target alias through the managed SSH config block.
 
 ## kubectl Discovery
 
