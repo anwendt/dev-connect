@@ -410,12 +410,20 @@ func TestKubectlBaseEnvKeepsProxyOverrides(t *testing.T) {
 	for _, want := range []string{
 		"KUBECONFIG=/home/developer/.kube/central-dev.yaml",
 		"HTTPS_PROXY=http://proxy.example.corp:8080",
-		"https_proxy=http://proxy.example.corp:8080",
 		"NO_PROXY=127.0.0.1,localhost",
-		"no_proxy=127.0.0.1,localhost",
 	} {
 		if !containsEnv(got, want) {
 			t.Fatalf("env missing %q: %#v", want, got)
+		}
+	}
+	if runtime.GOOS != "windows" {
+		for _, want := range []string{
+			"https_proxy=http://proxy.example.corp:8080",
+			"no_proxy=127.0.0.1,localhost",
+		} {
+			if !containsEnv(got, want) {
+				t.Fatalf("env missing %q: %#v", want, got)
+			}
 		}
 	}
 }
