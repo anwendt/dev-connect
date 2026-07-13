@@ -175,7 +175,7 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			}
 
 			if !opts.noCode {
-				if loaded.Config.VSCode.IsolatedUserDataDir {
+				if loaded.Config.VSCode.UseIsolatedUserDataDir() {
 					vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
 					if err := vscode.PrepareUserDataDir(vscodeUserDataDir, result.State.SSHConfigPath); err != nil {
 						_ = cleanupSessionArtifacts(result.State)

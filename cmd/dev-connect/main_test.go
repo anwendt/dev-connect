@@ -330,37 +330,6 @@ func TestConnectLaunchesVSCodeWhenNoCodeIsFalse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fake VS Code launcher output: %v", err)
 	}
-	wantArgs := "--remote\nssh-remote+dev01"
-	if strings.TrimSpace(string(data)) != wantArgs {
-		t.Fatalf("VS Code launcher args = %q", string(data))
-	}
-
-	if _, err := os.Stat(filepath.Join(sessionDir, "vscode-user-data")); !os.IsNotExist(err) {
-		t.Fatalf("default VS Code user-data directory was created: %v", err)
-	}
-}
-
-func TestConnectLaunchesVSCodeWithIsolatedUserDataDir(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("shell script fake VS Code launcher is not used on Windows")
-	}
-
-	launcherOutput := filepath.Join(t.TempDir(), "vscode-args.txt")
-	launcherPath := writeFakeCodeLauncher(t, launcherOutput)
-	configPath := writeCLIConfigWithIsolatedVSCodeLauncher(t, launcherPath)
-	sessionDir := t.TempDir()
-	t.Setenv("DEV_CONNECT_CODE_PATH", launcherPath)
-	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
-	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
-	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
-	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
-
-	_ = executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-reconnect", "--output", "json")
-
-	data, err := os.ReadFile(launcherOutput)
-	if err != nil {
-		t.Fatalf("read fake VS Code launcher output: %v", err)
-	}
 	wantArgs := "--user-data-dir\n" + filepath.Join(sessionDir, "vscode-user-data") + "\n--remote\nssh-remote+dev01"
 	if strings.TrimSpace(string(data)) != wantArgs {
 		t.Fatalf("VS Code launcher args = %q", string(data))
@@ -377,6 +346,37 @@ func TestConnectLaunchesVSCodeWithIsolatedUserDataDir(t *testing.T) {
 	}
 	if settings["remote.SSH.configFile"] != filepath.Join(os.Getenv("DEV_CONNECT_SSH_DIR"), "ssh_config") {
 		t.Fatalf("remote.SSH.configFile = %q", settings["remote.SSH.configFile"])
+	}
+}
+
+func TestConnectLaunchesVSCodeWithNormalUserDataDirWhenConfigured(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script fake VS Code launcher is not used on Windows")
+	}
+
+	launcherOutput := filepath.Join(t.TempDir(), "vscode-args.txt")
+	launcherPath := writeFakeCodeLauncher(t, launcherOutput)
+	configPath := writeCLIConfigWithNormalVSCodeLauncher(t, launcherPath)
+	sessionDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_CODE_PATH", launcherPath)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	_ = executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-reconnect", "--output", "json")
+
+	data, err := os.ReadFile(launcherOutput)
+	if err != nil {
+		t.Fatalf("read fake VS Code launcher output: %v", err)
+	}
+	wantArgs := "--remote\nssh-remote+dev01"
+	if strings.TrimSpace(string(data)) != wantArgs {
+		t.Fatalf("VS Code launcher args = %q", string(data))
+	}
+
+	if _, err := os.Stat(filepath.Join(sessionDir, "vscode-user-data")); !os.IsNotExist(err) {
+		t.Fatalf("normal VS Code profile mode created user-data directory: %v", err)
 	}
 }
 
@@ -602,13 +602,13 @@ vscode:
 `)
 }
 
-func writeCLIConfigWithIsolatedVSCodeLauncher(t *testing.T, launcherPath string) string {
+func writeCLIConfigWithNormalVSCodeLauncher(t *testing.T, launcherPath string) string {
 	t.Helper()
 
 	return writeCLIConfigData(t, `
 vscode:
   launcherPath: `+launcherPath+`
-  isolatedUserDataDir: true
+  isolatedUserDataDir: false
 `)
 }
 

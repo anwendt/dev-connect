@@ -116,11 +116,41 @@ vscode:
 		t.Fatalf("parse config: %v", err)
 	}
 
-	if !cfg.VSCode.IsolatedUserDataDir {
+	if !cfg.VSCode.UseIsolatedUserDataDir() {
 		t.Fatal("isolatedUserDataDir was not parsed")
 	}
 	if cfg.VSCode.LauncherPath == "" {
 		t.Fatal("launcherPath was not parsed")
+	}
+}
+
+func TestVSCodeIsolatedUserDataDirDefaultsToTrue(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if !cfg.VSCode.UseIsolatedUserDataDir() {
+		t.Fatal("isolated user-data directory did not default to true")
+	}
+}
+
+func TestParseVSCodeNormalUserDataDirOptIn(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+vscode:
+  isolatedUserDataDir: false
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if cfg.VSCode.UseIsolatedUserDataDir() {
+		t.Fatal("isolatedUserDataDir false was not honored")
 	}
 }
 

@@ -86,7 +86,7 @@ targets:
     identityFile: /Users/developer/.ssh/dev01
 vscode:
   launcherPath: ""
-  isolatedUserDataDir: false
+  isolatedUserDataDir: true
 ```
 
 Validated examples are available under:
@@ -107,29 +107,27 @@ Default:
 
 ```yaml
 vscode:
-  isolatedUserDataDir: false
-```
-
-With the default setting, VS Code uses the normal local user profile. Existing
-GitHub sign-in state, GitHub Copilot authentication, settings, and locally
-installed extensions remain available.
-
-When this mode is used, VS Code Remote SSH must be able to resolve the target
-alias through the user's normal Remote SSH configuration. If the generated
-temporary SSH configuration should be used instead, enable isolated mode.
-
-Isolated mode:
-
-```yaml
-vscode:
   isolatedUserDataDir: true
 ```
 
-In isolated mode, `dev-connect` creates a temporary VS Code user-data directory
-and writes `remote.SSH.configFile` to point at the generated temporary SSH
-configuration. This avoids modifying the user's normal VS Code settings, but
-GitHub Copilot and browser-based GitHub authentication may need to be completed
-inside that isolated profile.
+With the default setting, `dev-connect` creates a temporary VS Code user-data
+directory and writes `remote.SSH.configFile` to point at the generated temporary
+SSH configuration. This ensures VS Code Remote SSH can resolve the generated
+target alias without changing the user's normal VS Code settings.
+
+Normal local VS Code profile mode:
+
+```yaml
+vscode:
+  isolatedUserDataDir: false
+```
+
+With `isolatedUserDataDir: false`, VS Code uses the normal local user profile.
+Existing GitHub sign-in state, GitHub Copilot authentication, settings, and
+locally installed extensions remain available. In this mode, VS Code Remote SSH
+must be able to resolve the target alias through the user's normal Remote SSH
+configuration because `dev-connect` does not modify the user's global VS Code
+settings.
 
 ## kubectl Discovery
 

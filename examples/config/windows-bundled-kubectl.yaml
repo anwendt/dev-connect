@@ -28,4 +28,4 @@ hostKeys:
   dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
 vscode:
   launcherPath: C:\Program Files\Microsoft VS Code\bin\code.cmd
-  isolatedUserDataDir: false
+  isolatedUserDataDir: true

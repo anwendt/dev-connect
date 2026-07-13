@@ -86,7 +86,15 @@ type Target struct {
 // VSCode describes VS Code launcher configuration.
 type VSCode struct {
 	LauncherPath        string `json:"launcherPath,omitempty"`
-	IsolatedUserDataDir bool   `json:"isolatedUserDataDir,omitempty"`
+	IsolatedUserDataDir *bool  `json:"isolatedUserDataDir,omitempty"`
+}
+
+// UseIsolatedUserDataDir reports whether VS Code should use a session-scoped profile.
+func (settings VSCode) UseIsolatedUserDataDir() bool {
+	if settings.IsolatedUserDataDir == nil {
+		return true
+	}
+	return *settings.IsolatedUserDataDir
 }
 
 // Load reads and validates the first available configuration source.

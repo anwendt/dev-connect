@@ -91,13 +91,14 @@ are not sufficient for the selected Kubernetes or Rancher endpoint.
 
 ## VS Code Profile Behavior
 
-The examples use the normal VS Code user profile:
+The examples use an isolated VS Code user-data directory:
 
 ```yaml
 vscode:
-  isolatedUserDataDir: false
+  isolatedUserDataDir: true
 ```
 
-This keeps existing GitHub sign-in state, GitHub Copilot authentication, local
-settings, and locally installed extensions available. If a stricter isolated
-profile is required, set `isolatedUserDataDir: true`.
+This allows `dev-connect` to pass the generated temporary SSH config to VS Code
+Remote SSH without changing the user's normal VS Code settings. To use the
+normal VS Code user profile, set `isolatedUserDataDir: false` and make sure the
+target alias is resolvable through the user's normal Remote SSH configuration.

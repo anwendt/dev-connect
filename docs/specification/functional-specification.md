@@ -533,8 +533,8 @@ Functional requirements:
 - If the launcher is not found in `PATH`, the CLI shall check documented OS-specific default installation paths.
 - The CLI shall launch VS Code Remote SSH for the generated host alias.
 - The CLI shall allow `--no-code` for tunnel-only operation.
-- The CLI shall use the normal VS Code user profile by default.
-- The CLI shall support `vscode.isolatedUserDataDir: true` for a session-scoped VS Code user-data directory.
+- The CLI shall use a session-scoped VS Code user-data directory by default.
+- The CLI shall support `vscode.isolatedUserDataDir: false` for normal local VS Code profile mode when the target alias is resolvable there.
 - The CLI shall fail clearly when VS Code cannot be launched.
 - The CLI shall not install or manage VS Code extensions.
 - The CLI shall not run browser-based VS Code.
