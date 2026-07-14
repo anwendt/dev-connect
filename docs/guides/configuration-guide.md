@@ -205,6 +205,7 @@ vscode:
     httpsProxy: http://172.28.236.246:8080
     noProxy: localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,.svc,.cluster.local
     proxySupport: override
+    batchMode: true
 ```
 
 When enabled, `dev-connect connect` uses SSH after the local tunnel is ready and
@@ -218,9 +219,11 @@ host. `http.noProxy` is written as a JSON string array because VS Code expects
 string values there. `proxySupport` defaults to `override` when omitted.
 
 `sshPath` is optional. Set it when VS Code Remote SSH must use a specific SSH
-client, for example Git for Windows SSH with a running Git SSH agent. The remote
-setup command runs with `BatchMode=yes`, so the required SSH key must already be
-available through the selected SSH client and agent.
+client, for example Git for Windows SSH with a running Git SSH agent. By
+default, the remote setup command runs with `BatchMode=yes`, so the required SSH
+key must already be available through the selected SSH client and agent. Set
+`batchMode: false` only when the selected SSH client must prompt interactively
+for a password or key passphrase during remote setup.
 
 ## kubectl Discovery
 

@@ -320,6 +320,7 @@ func configureRemoteVSCode(ctx context.Context, cfg config.Config, targetAlias, 
 		HTTPSProxy:    setup.HTTPSProxy,
 		NoProxy:       setup.NoProxy,
 		ProxySupport:  setup.ProxySupport,
+		BatchMode:     setup.BatchMode,
 	})
 }
 

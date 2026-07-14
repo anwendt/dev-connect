@@ -43,3 +43,30 @@ func TestRenderRemoteSetupScriptEscapesShellValues(t *testing.T) {
 		t.Fatalf("script did not shell-escape proxy value:\n%s", script)
 	}
 }
+
+func TestRemoteSetupSSHArgsDefaultsToBatchMode(t *testing.T) {
+	args := strings.Join(remoteSetupSSHArgs(RemoteSetupOptions{
+		TargetAlias:   "dev01",
+		SSHConfigPath: "/tmp/ssh_config",
+	}), " ")
+
+	if !strings.Contains(args, "-o BatchMode=yes") {
+		t.Fatalf("args did not include BatchMode=yes: %s", args)
+	}
+}
+
+func TestRemoteSetupSSHArgsCanDisableBatchMode(t *testing.T) {
+	batchMode := false
+	args := strings.Join(remoteSetupSSHArgs(RemoteSetupOptions{
+		TargetAlias:   "dev01",
+		SSHConfigPath: "/tmp/ssh_config",
+		BatchMode:     &batchMode,
+	}), " ")
+
+	if strings.Contains(args, "BatchMode=yes") {
+		t.Fatalf("args included BatchMode=yes: %s", args)
+	}
+	if !strings.Contains(args, "dev01 bash -s") {
+		t.Fatalf("args missing target command: %s", args)
+	}
+}

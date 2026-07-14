@@ -214,6 +214,7 @@ vscode:
     httpsProxy: http://proxy.example.corp:8080
     noProxy: localhost,127.0.0.1,.svc
     proxySupport: override
+	batchMode: false
 `))
 	if err != nil {
 		t.Fatalf("parse config: %v", err)
@@ -234,6 +235,26 @@ vscode:
 	}
 	if setup.ProxySupport != "override" {
 		t.Fatalf("proxySupport = %q", setup.ProxySupport)
+	}
+	if setup.UseBatchMode() {
+		t.Fatal("batchMode false was not honored")
+	}
+}
+
+func TestVSCodeRemoteSetupBatchModeDefaultsToTrue(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+vscode:
+  remoteSetup:
+    enabled: true
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if !cfg.VSCode.RemoteSetup.UseBatchMode() {
+		t.Fatal("remote setup batchMode did not default to true")
 	}
 }
 

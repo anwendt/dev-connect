@@ -105,6 +105,15 @@ type VSCodeRemoteSetup struct {
 	HTTPSProxy   string `json:"httpsProxy,omitempty"`
 	NoProxy      string `json:"noProxy,omitempty"`
 	ProxySupport string `json:"proxySupport,omitempty"`
+	BatchMode    *bool  `json:"batchMode,omitempty"`
+}
+
+// UseBatchMode reports whether remote setup SSH should reject interactive authentication prompts.
+func (settings VSCodeRemoteSetup) UseBatchMode() bool {
+	if settings.BatchMode == nil {
+		return true
+	}
+	return *settings.BatchMode
 }
 
 // UseIsolatedUserDataDir reports whether VS Code should use a session-scoped profile.

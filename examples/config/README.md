@@ -131,4 +131,6 @@ When `vscode.remoteSetup.enabled: true`, `dev-connect connect` writes:
 - `~/.vscode-server/data/Machine/settings.json`
 
 Use `vscode.remoteSetup.sshPath` when the setup SSH command must use a specific
-SSH client, for example Git for Windows SSH with a running Git SSH agent.
+SSH client, for example Git for Windows SSH with a running Git SSH agent. Set
+`vscode.remoteSetup.batchMode: false` only when that SSH client must prompt
+interactively for a password or key passphrase during remote setup.

@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -21,6 +23,7 @@ type RemoteSetupOptions struct {
 	HTTPSProxy    string
 	NoProxy       string
 	ProxySupport  string
+	BatchMode     *bool
 }
 
 // ConfigureRemote writes VS Code Server proxy setup files on the remote SSH target.
@@ -37,21 +40,38 @@ func ConfigureRemote(ctx context.Context, options RemoteSetupOptions) error {
 		sshPath = "ssh"
 	}
 
-	args := []string{}
-	if options.SSHConfigPath != "" {
-		args = append(args, "-F", options.SSHConfigPath)
-	}
-	args = append(args, "-o", "BatchMode=yes", options.TargetAlias, "bash -s")
-
-	cmd := exec.CommandContext(ctx, sshPath, args...)
+	cmd := exec.CommandContext(ctx, sshPath, remoteSetupSSHArgs(options)...)
 	cmd.Stdin = strings.NewReader(RenderRemoteSetupScript(options))
 
 	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
+	if useBatchMode(options.BatchMode) {
+		cmd.Stderr = &stderr
+	} else {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderr)
+	}
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("configure remote VS Code server: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return nil
+}
+
+func remoteSetupSSHArgs(options RemoteSetupOptions) []string {
+	args := []string{}
+	if options.SSHConfigPath != "" {
+		args = append(args, "-F", options.SSHConfigPath)
+	}
+	if useBatchMode(options.BatchMode) {
+		args = append(args, "-o", "BatchMode=yes")
+	}
+	return append(args, options.TargetAlias, "bash -s")
+}
+
+func useBatchMode(value *bool) bool {
+	if value == nil {
+		return true
+	}
+	return *value
 }
 
 // RenderRemoteSetupScript returns a POSIX shell script that prepares VS Code Server proxy settings.

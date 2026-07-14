@@ -40,3 +40,4 @@ vscode:
     httpsProxy: http://remote-proxy.example.corp:8080
     noProxy: localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,.svc,.cluster.local
     proxySupport: override
+    batchMode: true
