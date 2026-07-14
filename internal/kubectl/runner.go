@@ -213,6 +213,7 @@ func (runner ExecutableRunner) StartUntilReady(ctx context.Context, command Comm
 
 	cmd := exec.Command(kubectlPath, command.Args...)
 	cmd.Env = mergeEnv(runner.baseEnv(), command.Env)
+	configureBackgroundProcess(cmd)
 
 	stdoutFile, err := os.CreateTemp("", "dev-connect-kubectl-stdout-*.log")
 	if err != nil {
