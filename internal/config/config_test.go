@@ -202,6 +202,41 @@ vscode:
 	}
 }
 
+func TestParseVSCodeRemoteSetup(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+vscode:
+  remoteSetup:
+    enabled: true
+    sshPath: /usr/bin/ssh
+    httpProxy: http://proxy.example.corp:8080
+    httpsProxy: http://proxy.example.corp:8080
+    noProxy: localhost,127.0.0.1,.svc
+    proxySupport: override
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	setup := cfg.VSCode.RemoteSetup
+	if !setup.Enabled {
+		t.Fatal("remote setup was not enabled")
+	}
+	if setup.SSHPath != "/usr/bin/ssh" {
+		t.Fatalf("sshPath = %q", setup.SSHPath)
+	}
+	if setup.HTTPProxy != "http://proxy.example.corp:8080" || setup.HTTPSProxy != "http://proxy.example.corp:8080" {
+		t.Fatalf("proxy settings = %#v", setup)
+	}
+	if setup.NoProxy != "localhost,127.0.0.1,.svc" {
+		t.Fatalf("noProxy = %q", setup.NoProxy)
+	}
+	if setup.ProxySupport != "override" {
+		t.Fatalf("proxySupport = %q", setup.ProxySupport)
+	}
+}
+
 func TestParseRejectsUnknownHostKeyReferenceWhenInventoryIsConfigured(t *testing.T) {
 	_, err := Parse([]byte(`
 apiVersion: dev-connect/v1

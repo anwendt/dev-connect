@@ -186,6 +186,42 @@ vscode:
 With this combination, VS Code uses the normal local profile while OpenSSH can
 resolve the dev-connect target alias through the managed SSH config block.
 
+## VS Code Remote Server Setup
+
+`vscode.remoteSetup` controls optional VS Code Server configuration on the
+remote development host. This is useful when Remote SSH extensions such as
+GitHub Copilot must use a proxy that is reachable from the remote host, not the
+developer workstation.
+
+Example:
+
+```yaml
+vscode:
+  isolatedUserDataDir: false
+  remoteSetup:
+    enabled: true
+    sshPath: 'C:\Users\developer\AppData\Local\Programs\Git\usr\bin\ssh.exe'
+    httpProxy: http://172.28.236.246:8080
+    httpsProxy: http://172.28.236.246:8080
+    noProxy: localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,.svc,.cluster.local
+    proxySupport: override
+```
+
+When enabled, `dev-connect connect` uses SSH after the local tunnel is ready and
+writes these remote VS Code Server files:
+
+- `~/.vscode-server/server-env-setup`
+- `~/.vscode-server/data/Machine/settings.json`
+
+The remote machine settings are merged when `python3` is available on the remote
+host. `http.noProxy` is written as a JSON string array because VS Code expects
+string values there. `proxySupport` defaults to `override` when omitted.
+
+`sshPath` is optional. Set it when VS Code Remote SSH must use a specific SSH
+client, for example Git for Windows SSH with a running Git SSH agent. The remote
+setup command runs with `BatchMode=yes`, so the required SSH key must already be
+available through the selected SSH client and agent.
+
 ## kubectl Discovery
 
 `dev-connect` never opens direct network connections to Rancher or the

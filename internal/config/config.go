@@ -92,8 +92,19 @@ type SSH struct {
 
 // VSCode describes VS Code launcher configuration.
 type VSCode struct {
-	LauncherPath        string `json:"launcherPath,omitempty"`
-	IsolatedUserDataDir *bool  `json:"isolatedUserDataDir,omitempty"`
+	LauncherPath        string            `json:"launcherPath,omitempty"`
+	IsolatedUserDataDir *bool             `json:"isolatedUserDataDir,omitempty"`
+	RemoteSetup         VSCodeRemoteSetup `json:"remoteSetup,omitempty"`
+}
+
+// VSCodeRemoteSetup describes optional VS Code Server settings written on the remote target.
+type VSCodeRemoteSetup struct {
+	Enabled      bool   `json:"enabled,omitempty"`
+	SSHPath      string `json:"sshPath,omitempty"`
+	HTTPProxy    string `json:"httpProxy,omitempty"`
+	HTTPSProxy   string `json:"httpsProxy,omitempty"`
+	NoProxy      string `json:"noProxy,omitempty"`
+	ProxySupport string `json:"proxySupport,omitempty"`
 }
 
 // UseIsolatedUserDataDir reports whether VS Code should use a session-scoped profile.

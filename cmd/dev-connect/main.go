@@ -205,6 +205,13 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 			}
 
 			if !opts.noCode {
+				if loaded.Config.VSCode.RemoteSetup.Enabled {
+					if err := configureRemoteVSCode(cmd.Context(), loaded.Config, args[0], result.State.SSHConfigPath); err != nil {
+						_ = cleanupSessionArtifacts(result.State)
+						_ = (session.Store{Dir: result.SessionDir}).Clear()
+						return err
+					}
+				}
 				if loaded.Config.VSCode.UseIsolatedUserDataDir() {
 					vscodeUserDataDir := filepath.Join(result.SessionDir, "vscode-user-data")
 					if err := vscode.PrepareUserDataDir(vscodeUserDataDir, result.State.SSHConfigPath); err != nil {
@@ -300,6 +307,19 @@ func launchVSCode(ctx context.Context, cfg config.Config, targetAlias, userDataD
 	return vscode.ExecutableLauncher{Path: path}.Launch(ctx, vscode.LaunchOptions{
 		TargetAlias: targetAlias,
 		UserDataDir: userDataDir,
+	})
+}
+
+func configureRemoteVSCode(ctx context.Context, cfg config.Config, targetAlias, sshConfigPath string) error {
+	setup := cfg.VSCode.RemoteSetup
+	return vscode.ConfigureRemote(ctx, vscode.RemoteSetupOptions{
+		TargetAlias:   targetAlias,
+		SSHConfigPath: sshConfigPath,
+		SSHPath:       setup.SSHPath,
+		HTTPProxy:     setup.HTTPProxy,
+		HTTPSProxy:    setup.HTTPSProxy,
+		NoProxy:       setup.NoProxy,
+		ProxySupport:  setup.ProxySupport,
 	})
 }
 

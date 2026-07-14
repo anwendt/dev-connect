@@ -1,0 +1,42 @@
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+contexts:
+  central-dev:
+    cluster: central-dev
+    gateway: dev01
+clusters:
+  central-dev:
+    kubeconfig: 'C:\Users\developer\.kube\central-dev-cluster.yaml'
+    kubernetesContext: central-dev-cluster
+    kubectlPath: 'C:\Users\developer\bin\kubectl.exe'
+    proxy:
+      enabled: true
+      httpProxy: http://workstation-proxy.example.corp:8080
+      httpsProxy: http://workstation-proxy.example.corp:8080
+      noProxy: example.corp
+gateways:
+  dev01:
+    namespace: dev-connect
+    service: dev-connect-gateway-dev01
+    port: 22
+targets:
+  dev01:
+    gateway: dev01
+    user: developer
+    identityFile: 'C:\Users\developer\.ssh\id_rsa'
+    hostKeyRef: dev01
+hostKeys:
+  dev01: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExamplePinnedHostKeyReplaceFromGitOpsInventory dev01
+ssh:
+  manageUserConfig: true
+  userConfigPath: ""
+vscode:
+  launcherPath: ""
+  isolatedUserDataDir: false
+  remoteSetup:
+    enabled: true
+    sshPath: 'C:\Users\developer\AppData\Local\Programs\Git\usr\bin\ssh.exe'
+    httpProxy: http://remote-proxy.example.corp:8080
+    httpsProxy: http://remote-proxy.example.corp:8080
+    noProxy: localhost,127.0.0.1,0.0.0.0,10.0.0.0/8,.svc,.cluster.local
+    proxySupport: override

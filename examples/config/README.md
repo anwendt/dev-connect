@@ -26,6 +26,7 @@ reference. For example, target `dev01` uses `hostKeys.dev01`.
 | --- | --- |
 | `dev01-basic.yaml` | Minimal single-cluster configuration without proxy override. |
 | `dev01-proxy.yaml` | Single-cluster configuration with a process-scoped proxy override for `kubectl`. |
+| `dev01-remote-copilot-proxy.yaml` | Windows Remote SSH configuration that prepares remote VS Code Server proxy settings for Copilot. |
 | `multi-cluster-proxy.yaml` | Multiple Rancher/Kubernetes contexts, multiple gateways, and per-cluster proxy settings. |
 | `windows-bundled-kubectl.yaml` | Windows configuration that points to a bundled `kubectl.exe` next to `dev-connect.exe`. |
 
@@ -116,3 +117,18 @@ vscode:
 
 `dev-connect connect` writes only a marked `dev-connect` block to the user's
 OpenSSH config. `dev-connect disconnect` removes that block again.
+
+## Remote VS Code Server Proxy
+
+`dev01-remote-copilot-proxy.yaml` shows how to prepare VS Code Server proxy
+settings on the remote development host. This is useful when Remote SSH
+extensions such as GitHub Copilot need a proxy that is reachable from the remote
+host instead of the developer workstation.
+
+When `vscode.remoteSetup.enabled: true`, `dev-connect connect` writes:
+
+- `~/.vscode-server/server-env-setup`
+- `~/.vscode-server/data/Machine/settings.json`
+
+Use `vscode.remoteSetup.sshPath` when the setup SSH command must use a specific
+SSH client, for example Git for Windows SSH with a running Git SSH agent.
