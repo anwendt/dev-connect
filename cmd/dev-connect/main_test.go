@@ -371,6 +371,45 @@ func TestConnectUsesClusterKubectlPathFromConfig(t *testing.T) {
 	}
 }
 
+func TestConnectUsesOnlyConfiguredContextByDefault(t *testing.T) {
+	kubectlPath := writeFakeKubectl(t, "yes")
+	configPath := writeCLIConfigWithKubectlPath(t, kubectlPath)
+	sessionDir := t.TempDir()
+	sshDir := t.TempDir()
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+	t.Setenv("DEV_CONNECT_SSH_DIR", sshDir)
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+
+	stdout := executeCommand(t, "--config", configPath, "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
+
+	got := decodeJSON(t, stdout)
+	if got["status"] != "Prepared" {
+		t.Fatalf("status = %v, want Prepared", got["status"])
+	}
+}
+
+func TestConnectRequiresContextWhenMultipleContextsAreConfigured(t *testing.T) {
+	configPath := writeCLIConfigWithAdditionalContext(t)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_SSH_DIR", t.TempDir())
+	t.Setenv("DEV_CONNECT_TEST_LOCAL_PORT", "55221")
+	t.Setenv("DEV_CONNECT_KUBECTL_PATH", writeFakeKubectl(t, "yes"))
+
+	cmd := newRootCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--config", configPath, "connect", "dev01", "--no-code", "--no-reconnect"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("connect without context succeeded with multiple contexts")
+	}
+	if !strings.Contains(err.Error(), "context is required when multiple contexts are configured") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestKubectlBaseEnvSetsConfiguredKubeconfig(t *testing.T) {
 	got := kubectlBaseEnvFrom([]string{"PATH=/usr/bin"}, "linux", config.Cluster{
 		Kubeconfig: "/home/developer/.kube/central-dev.yaml",
@@ -786,6 +825,26 @@ func writeCLIConfigWithKubectlPath(t *testing.T, kubectlPath string) string {
 		string(data),
 		"  dev:\n    kubernetesContext: rancher-dev",
 		"  dev:\n    kubernetesContext: rancher-dev\n    kubectlPath: "+yamlSingleQuoted(kubectlPath),
+		1,
+	)
+	if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return configPath
+}
+
+func writeCLIConfigWithAdditionalContext(t *testing.T) string {
+	t.Helper()
+
+	configPath := writeCLIConfig(t)
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read config: %v", err)
+	}
+	updated := strings.Replace(
+		string(data),
+		"contexts:\n  platform-dev:\n    cluster: dev\n    gateway: dev01",
+		"contexts:\n  platform-dev:\n    cluster: dev\n    gateway: dev01\n  platform-prod:\n    cluster: dev\n    gateway: dev01",
 		1,
 	)
 	if err := os.WriteFile(configPath, []byte(updated), 0o600); err != nil {

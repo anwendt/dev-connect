@@ -372,16 +372,26 @@ func selectedCluster(cfg config.Config, opts cliOptions) (config.Cluster, error)
 		}
 		return cluster, nil
 	}
-	if opts.contextName == "" {
-		return config.Cluster{}, nil
+	contextName := opts.contextName
+	if contextName == "" {
+		switch len(cfg.Contexts) {
+		case 0:
+			return config.Cluster{}, nil
+		case 1:
+			for name := range cfg.Contexts {
+				contextName = name
+			}
+		default:
+			return config.Cluster{}, fmt.Errorf("context is required when multiple contexts are configured")
+		}
 	}
-	contextConfig, ok := cfg.Contexts[opts.contextName]
+	contextConfig, ok := cfg.Contexts[contextName]
 	if !ok {
-		return config.Cluster{}, fmt.Errorf("unknown context %q", opts.contextName)
+		return config.Cluster{}, fmt.Errorf("unknown context %q", contextName)
 	}
 	cluster, ok := cfg.Clusters[contextConfig.Cluster]
 	if !ok {
-		return config.Cluster{}, fmt.Errorf("context %q references unknown cluster %q", opts.contextName, contextConfig.Cluster)
+		return config.Cluster{}, fmt.Errorf("context %q references unknown cluster %q", contextName, contextConfig.Cluster)
 	}
 	return cluster, nil
 }
