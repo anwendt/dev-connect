@@ -10,9 +10,19 @@ Symptoms:
 
 Checks:
 
-- verify `kubectl` is installed,
-- verify `kubectl` is in `PATH`,
-- verify configured `kubectl` path if an override is used.
+- verify a configured `--kubectl-path` or `clusters.<name>.kubectlPath`,
+- verify `DEV_CONNECT_KUBECTL_PATH` if it is used,
+- verify `kubectl` is next to `dev-connect` when using the Windows bundle,
+- verify `kubectl` is in `PATH` or in an OS-specific default location.
+
+Discovery order:
+
+1. `--kubectl-path <path>`
+2. `DEV_CONNECT_KUBECTL_PATH`
+3. `clusters.<name>.kubectlPath`
+4. `kubectl` next to the `dev-connect` executable
+5. `kubectl` in `PATH`
+6. OS-specific default locations
 
 ## Kubernetes Authentication Fails
 
@@ -111,4 +121,3 @@ Expected cleanup:
 - JSON session state is updated.
 
 If stale state remains, `disconnect` and `status` should report enough metadata to identify stale resources without deleting unrelated processes.
-

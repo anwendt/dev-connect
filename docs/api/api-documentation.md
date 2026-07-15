@@ -16,6 +16,8 @@ dev-connect disconnect
 dev-connect status
 dev-connect list
 dev-connect version
+dev-connect config location
+dev-connect config validate
 dev-connect help
 ```
 
@@ -26,6 +28,7 @@ dev-connect help
 --context <name>
 --cluster <name>
 --gateway <name>
+--kubectl-path <path>
 --log-level <error|warn|info|debug>
 --log-format <text|json>
 --output <text|json>
@@ -145,6 +148,8 @@ Expected top-level fields:
 - `clusters`,
 - `gateways`,
 - `targets`,
+- `hostKeys`,
+- optional `ssh`,
 - optional `vscode`.
 
 Unsupported schema versions shall be rejected before external processes are started.

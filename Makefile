@@ -22,6 +22,9 @@ HELM_REGISTRY_PASSWORD ?= $(GITHUB_TOKEN)
 HELM_CHART_NAME ?= dev-connect-gateway
 HELM_CHART_VERSION ?= $(shell awk -F': *' '/^version:/ { gsub(/"/, "", $$2); print $$2 }' charts/dev-connect-gateway/Chart.yaml)
 VERSION ?= dev
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf 'unknown')
+BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS ?= -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)
 KUBECTL_VERSION ?= v1.30.14
 KUBECTL_WINDOWS_AMD64_URL ?= https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/windows/amd64/kubectl.exe
 
@@ -187,7 +190,7 @@ sign:
 release-check: fmt-check lint license-check test-unit test-integration test-security test-e2e helm-lint helm-template kustomize-build
 
 build:
-	GOCACHE=$(GO_CACHE) $(GO) build -buildvcs=false -o bin/dev-connect ./cmd/dev-connect
+	GOCACHE=$(GO_CACHE) $(GO) build -buildvcs=false -ldflags="$(LDFLAGS)" -o bin/dev-connect ./cmd/dev-connect
 
 build-all:
 	@mkdir -p dist
@@ -203,7 +206,7 @@ build-all:
 		output=dist/$${name}; \
 		if [ "$${goos}" = "windows" ]; then output=$${output}.exe; fi; \
 		printf 'building %s/%s -> %s\n' "$${goos}" "$${goarch}" "$${output}"; \
-		GOOS=$${goos} GOARCH=$${goarch} CGO_ENABLED=0 GOCACHE=$(GO_CACHE) $(GO) build -trimpath -buildvcs=false -ldflags="-s -w" -o "$${output}" ./cmd/dev-connect; \
+		GOOS=$${goos} GOARCH=$${goarch} CGO_ENABLED=0 GOCACHE=$(GO_CACHE) $(GO) build -trimpath -buildvcs=false -ldflags="$(LDFLAGS)" -o "$${output}" ./cmd/dev-connect; \
 	done
 
 package-windows-bundle: build-all

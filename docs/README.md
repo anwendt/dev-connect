@@ -12,6 +12,7 @@ Phase 10 is documentation only. It does not create Go implementation files, test
 - [Developer Guide](guides/developer-guide.md)
 - [Operator Guide](guides/operator-guide.md)
 - [Installation Guide](guides/installation-guide.md)
+- [Development Server Onboarding Guide](guides/development-server-onboarding-guide.md)
 - [Configuration Guide](guides/configuration-guide.md)
 - [Troubleshooting Guide](guides/troubleshooting-guide.md)
 - [Security Guide](guides/security-guide.md)

@@ -11,7 +11,9 @@ This guide describes how a developer uses `dev-connect` to open a VS Code Deskto
 The developer workstation needs:
 
 - `dev-connect` installed.
-- `kubectl` installed and available in `PATH`.
+- `kubectl` available through `--kubectl-path`, `DEV_CONNECT_KUBECTL_PATH`,
+  `clusters.<name>.kubectlPath`, a bundled executable next to `dev-connect`, or
+  `PATH`.
 - A working kubeconfig for the target platform.
 - Access through the existing Rancher authentication model.
 - VS Code Desktop installed.
@@ -78,6 +80,10 @@ dev-connect --config examples/config/dev01-proxy.yaml connect dev01
 The proxy override affects only the `kubectl` process started by `dev-connect`.
 It does not change VS Code, SSH, kubeconfig, shell profiles, or operating system
 proxy settings.
+
+On Windows, the release bundle can include `kubectl.exe` next to
+`dev-connect.exe`. In that setup no global `kubectl` installation and no `PATH`
+change is required.
 
 ## Disconnect
 

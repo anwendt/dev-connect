@@ -353,7 +353,7 @@ targets:
   dev01:
     gateway: dev01
     user: developer
-    identityFile: C:\Users\developer\.ssh\dev01
+    identityFile: 'C:\Users\developer\.ssh\dev01'
 ```
 
 The key file remains local. `dev-connect` does not read, copy, log, or store the

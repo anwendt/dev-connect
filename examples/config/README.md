@@ -68,7 +68,7 @@ You can also set a cluster-specific path:
 ```yaml
 clusters:
   central-dev:
-    kubectlPath: C:\Program Files\dev-connect\kubectl.exe
+    kubectlPath: 'C:\Program Files\dev-connect\kubectl.exe'
 ```
 
 ## Proxy Behavior

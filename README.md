@@ -249,6 +249,7 @@ Important documentation entry points:
 - [Architecture Guide](docs/guides/architecture-guide.md)
 - [Developer Guide](docs/guides/developer-guide.md)
 - [Operator Guide](docs/guides/operator-guide.md)
+- [Development Server Onboarding Guide](docs/guides/development-server-onboarding-guide.md)
 - [Configuration Guide](docs/guides/configuration-guide.md)
 - [Security Guide](docs/guides/security-guide.md)
 - [Troubleshooting Guide](docs/guides/troubleshooting-guide.md)

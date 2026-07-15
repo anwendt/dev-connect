@@ -3,5 +3,5 @@ name: dev-connect-gateway
 description: TCP-only HAProxy gateway for dev-connect Remote SSH access
 type: application
 version: 0.2.7
-appVersion: "0.1.5"
+appVersion: "0.2.0"
 kubeVersion: ">=1.30.0-0"
