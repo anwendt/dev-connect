@@ -214,7 +214,7 @@ vscode:
     httpsProxy: http://proxy.example.corp:8080
     noProxy: localhost,127.0.0.1,.svc
     proxySupport: override
-	batchMode: false
+    batchMode: false
 `))
 	if err != nil {
 		t.Fatalf("parse config: %v", err)
