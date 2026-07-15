@@ -85,7 +85,7 @@ The following decisions are approved for the first implementation and shall be u
 6. VS Code launcher discovery:
    - first resolve `code` from the user's `PATH`.
    - then check OS-specific default installation paths.
-   - then use user-configured launcher path in `dev-connect.yaml`.
+   - then use user-configured launcher path in `config.yaml`.
    - Windows defaults:
      - `%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`
      - `C:\Program Files\Microsoft VS Code\bin\code.cmd`

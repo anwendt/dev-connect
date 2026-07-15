@@ -1,6 +1,6 @@
 # dev-connect Developer Guide
 
-Status: Implementation guide
+Status: Approved
 
 ## Purpose
 

@@ -40,8 +40,8 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 	if response["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", response["apiVersion"])
 	}
-	if response["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", response["status"])
+	if response["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", response["status"])
 	}
 	if response["server"] != "dev01" {
 		t.Fatalf("server = %v, want dev01", response["server"])
@@ -63,7 +63,7 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 func TestCLIRejectsInvalidConfigEndToEnd(t *testing.T) {
 	binary := buildCLI(t)
 	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	configPath := filepath.Join(tempDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte("apiVersion: dev-connect/v0\nkind: DevConnectConfig\n"), 0o600); err != nil {
 		t.Fatalf("write invalid config: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestCLIStatusEndToEnd(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &response); err != nil {
 		t.Fatalf("decode JSON output: %v\n%s", err, output)
 	}
-	if response["status"] != "Connected" || response["server"] != "dev01" || response["sessionId"] != "session-1" {
+	if response["status"] != "connected" || response["server"] != "dev01" || response["sessionId"] != "session-1" {
 		t.Fatalf("unexpected status response: %#v", response)
 	}
 }
@@ -132,8 +132,8 @@ func TestCLIDisconnectEndToEnd(t *testing.T) {
 	if err := json.Unmarshal([]byte(output), &response); err != nil {
 		t.Fatalf("decode JSON output: %v\n%s", err, output)
 	}
-	if response["status"] != "Disconnected" {
-		t.Fatalf("status = %v, want Disconnected", response["status"])
+	if response["status"] != "disconnected" {
+		t.Fatalf("status = %v, want disconnected", response["status"])
 	}
 	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -233,7 +233,7 @@ func writeConfig(t *testing.T) string {
 	t.Helper()
 
 	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	configPath := filepath.Join(tempDir, "config.yaml")
 	data := []byte(`
 apiVersion: dev-connect/v1
 kind: DevConnectConfig

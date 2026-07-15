@@ -301,7 +301,7 @@ The configuration shall be YAML.
 Illustrative schema:
 
 ```yaml
-apiVersion: dev-connect.io/v1alpha1
+apiVersion: dev-connect/v1
 kind: DevConnectConfig
 currentContext: default
 contexts:
@@ -381,7 +381,7 @@ The CLI shall:
 
 - Search `PATH` for `kubectl`.
 - Allow explicit override through configuration or environment variable.
-- Execute `kubectl version --client` or equivalent.
+- Execute `kubectl version` to validate Kubernetes API reachability.
 - Fail with an actionable message when `kubectl` is missing.
 - Treat `kubectl` as the only mechanism for Kubernetes and Rancher-backed cluster communication.
 - Never create a direct Kubernetes API or Rancher API client connection.

@@ -1,6 +1,6 @@
 # dev-connect Troubleshooting Guide
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## kubectl Not Found
 

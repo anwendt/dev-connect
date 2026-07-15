@@ -1,6 +1,6 @@
 # dev-connect Deployment Diagrams
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## Kubernetes Deployment
 
@@ -41,7 +41,7 @@ flowchart TB
 flowchart LR
     subgraph Workstation["Developer Workstation"]
         BIN["dev-connect binary"]
-        CFG["dev-connect.yaml"]
+        CFG["config.yaml"]
         STATE["session state JSON"]
         TEMP["temporary SSH config and known_hosts"]
         K["kubectl"]

@@ -9,7 +9,7 @@ import (
 func TestWriteJSONAddsAPIVersion(t *testing.T) {
 	var buf bytes.Buffer
 
-	if err := WriteJSON(&buf, Response{Status: "Connected", Server: "dev01"}); err != nil {
+	if err := WriteJSON(&buf, Response{Status: "connected", Server: "dev01"}); err != nil {
 		t.Fatalf("write JSON: %v", err)
 	}
 

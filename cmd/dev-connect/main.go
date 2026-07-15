@@ -46,6 +46,12 @@ type cliOptions struct {
 
 var sessionProcessExists = session.ProcessExists
 
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildDate = "unknown"
+)
+
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -233,12 +239,9 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				}
 			}
 
-			response := output.Response{
-				Status:    "Prepared",
-				Server:    args[0],
-				SessionID: result.State.SessionID,
-				LocalPort: result.LocalPort,
-			}
+			response := statusResponse("prepared", result.State)
+			response.Server = args[0]
+			response.LocalPort = result.LocalPort
 			logCommand(cmd, *opts, "connect", response)
 			return writeResponse(cmd, opts, response)
 		},
@@ -478,6 +481,33 @@ func loadConfig(opts cliOptions) (config.Loaded, error) {
 	return loader.Load()
 }
 
+func configLocation(opts cliOptions) (string, error) {
+	if opts.configPath != "" {
+		return opts.configPath, nil
+	}
+	if path := os.Getenv("DEV_CONNECT_CONFIG"); path != "" {
+		return path, nil
+	}
+	defaultDir, err := config.DefaultDir()
+	if err != nil {
+		return "", err
+	}
+	defaultPath := filepath.Join(defaultDir, config.DefaultFileName)
+	if _, err := os.Stat(defaultPath); err == nil {
+		return defaultPath, nil
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+
+	developmentPath := filepath.Join(".", config.DefaultFileName)
+	if _, err := os.Stat(developmentPath); err == nil {
+		return developmentPath, nil
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
+	}
+	return defaultPath, nil
+}
+
 func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 	return &cobra.Command{
 		Use:   "disconnect",
@@ -502,7 +532,7 @@ func newDisconnectCommand(opts *cliOptions) *cobra.Command {
 			if err := store.Clear(); err != nil {
 				return err
 			}
-			response := output.Response{Status: "Disconnected"}
+			response := output.Response{Status: "disconnected"}
 			logCommand(cmd, *opts, "disconnect", response)
 			return writeResponse(cmd, opts, response)
 		},
@@ -521,23 +551,40 @@ func newStatusCommand(opts *cliOptions) *cobra.Command {
 			}
 			state, err := (session.Store{Dir: sessionDir}).Load()
 			if errors.Is(err, session.ErrNotFound) {
-				response := output.Response{Status: "Disconnected"}
+				response := output.Response{Status: "disconnected"}
 				logCommand(cmd, *opts, "status", response)
 				return writeResponse(cmd, opts, response)
 			}
 			if err != nil {
 				return err
 			}
-			response := output.Response{
-				Status:    "Connected",
-				Server:    state.Target,
-				SessionID: state.SessionID,
-				LocalPort: state.LocalPort,
+			status := "connected"
+			if state.IsStale(sessionProcessExists) {
+				status = "stale"
 			}
+			response := statusResponse(status, state)
 			logCommand(cmd, *opts, "status", response)
 			return writeResponse(cmd, opts, response)
 		},
 	}
+}
+
+func statusResponse(status string, state session.State) output.Response {
+	reconnect := state.Reconnect
+	response := output.Response{
+		Status:            status,
+		Server:            state.Target,
+		SessionID:         state.SessionID,
+		LocalPort:         state.LocalPort,
+		KubernetesContext: state.KubernetesContext,
+		Namespace:         state.Namespace,
+		Gateway:           state.Gateway,
+		Reconnect:         &reconnect,
+	}
+	if !state.StartedAt.IsZero() {
+		response.Uptime = time.Since(state.StartedAt).Round(time.Second).String()
+	}
+	return response
 }
 
 func newListCommand(opts *cliOptions) *cobra.Command {
@@ -551,8 +598,12 @@ func newListCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 			response := output.Response{
-				Status:  "ok",
-				Targets: targetSummaries(loaded.Config),
+				Status:         "ok",
+				Targets:        targetSummaries(loaded.Config),
+				Clusters:       clusterSummaries(loaded.Config),
+				Gateways:       gatewaySummaries(loaded.Config),
+				DefaultContext: defaultContextName(loaded.Config, opts.contextName),
+				DefaultGateway: defaultGatewayName(loaded.Config, opts.contextName, opts.gatewayName),
 			}
 			logCommand(cmd, *opts, "list", response)
 			return writeResponse(cmd, opts, response)
@@ -622,6 +673,68 @@ func targetSummaries(cfg config.Config) []output.Target {
 	return targets
 }
 
+func clusterSummaries(cfg config.Config) []output.Cluster {
+	names := make([]string, 0, len(cfg.Clusters))
+	for name := range cfg.Clusters {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	clusters := make([]output.Cluster, 0, len(names))
+	for _, name := range names {
+		cluster := cfg.Clusters[name]
+		clusters = append(clusters, output.Cluster{
+			Name:              name,
+			KubernetesContext: cluster.KubernetesContext,
+		})
+	}
+	return clusters
+}
+
+func gatewaySummaries(cfg config.Config) []output.Gateway {
+	names := make([]string, 0, len(cfg.Gateways))
+	for name := range cfg.Gateways {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	gateways := make([]output.Gateway, 0, len(names))
+	for _, name := range names {
+		gateway := cfg.Gateways[name]
+		gateways = append(gateways, output.Gateway{
+			Name:      name,
+			Namespace: gateway.Namespace,
+			Service:   gateway.Service,
+			Port:      gateway.Port,
+		})
+	}
+	return gateways
+}
+
+func defaultContextName(cfg config.Config, selected string) string {
+	if selected != "" {
+		return selected
+	}
+	if len(cfg.Contexts) != 1 {
+		return ""
+	}
+	for name := range cfg.Contexts {
+		return name
+	}
+	return ""
+}
+
+func defaultGatewayName(cfg config.Config, selectedContext, selectedGateway string) string {
+	if selectedGateway != "" {
+		return selectedGateway
+	}
+	contextName := defaultContextName(cfg, selectedContext)
+	if contextName == "" {
+		return ""
+	}
+	return cfg.Contexts[contextName].Gateway
+}
+
 func newHelpCommand(root *cobra.Command) *cobra.Command {
 	return &cobra.Command{
 		Use:   "help",
@@ -641,6 +754,12 @@ func newVersionCommand() *cobra.Command {
 			return output.WriteJSON(cmd.OutOrStdout(), output.Response{
 				APIVersion: output.APIVersion,
 				Status:     "ok",
+				Version:    version,
+				Commit:     commit,
+				BuildDate:  buildDate,
+				GoVersion:  runtime.Version(),
+				OS:         runtime.GOOS,
+				Arch:       runtime.GOARCH,
 			})
 		},
 	}
@@ -675,13 +794,13 @@ func newConfigCommand(opts *cliOptions) *cobra.Command {
 
 	cmd.AddCommand(&cobra.Command{
 		Use:   "location",
-		Short: "Print the default configuration directory",
+		Short: "Print the effective configuration file path",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dir, err := config.DefaultDir()
+			path, err := configLocation(*opts)
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprintln(cmd.OutOrStdout(), dir)
+			_, err = fmt.Fprintln(cmd.OutOrStdout(), path)
 			return err
 		},
 	})
@@ -694,7 +813,7 @@ func newConfigCommand(opts *cliOptions) *cobra.Command {
 			if _, err := loadConfig(*opts); err != nil {
 				return err
 			}
-			response := output.Response{Status: "Valid"}
+			response := output.Response{Status: "valid"}
 			logCommand(cmd, *opts, "config validate", response)
 			return writeResponse(cmd, opts, response)
 		},

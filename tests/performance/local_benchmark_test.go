@@ -10,7 +10,7 @@ import (
 
 func BenchmarkJSONStatusOutput(b *testing.B) {
 	response := output.Response{
-		Status:    "Connected",
+		Status:    "connected",
 		Server:    "dev01",
 		SessionID: "session-1",
 		LocalPort: 55221,

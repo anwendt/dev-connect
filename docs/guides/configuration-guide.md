@@ -1,6 +1,6 @@
 # dev-connect Configuration Guide
 
-Status: Implementation guide
+Status: Approved
 
 ## Configuration Model
 
@@ -39,13 +39,13 @@ dev-connect --output json config validate
 
 The client shall determine configuration file locations using native operating system conventions.
 
-Default locations:
+Default locations use `config.yaml`:
 
-| Operating system | Default directory |
+| Operating system | Default path |
 | --- | --- |
-| Windows | `%APPDATA%\dev-connect\` |
-| Linux | `~/.config/dev-connect/` |
-| macOS | `~/Library/Application Support/dev-connect/` |
+| Windows | `%APPDATA%\dev-connect\config.yaml` |
+| Linux | `~/.config/dev-connect/config.yaml` |
+| macOS | `~/Library/Application Support/dev-connect/config.yaml` |
 
 Linux follows the XDG Base Directory Specification.
 
@@ -54,6 +54,8 @@ The effective configuration path shall be discoverable with:
 ```text
 dev-connect config location
 ```
+
+`--config <path>` and `DEV_CONNECT_CONFIG` may point to any YAML file name; `config.yaml` is the default when no explicit path is provided.
 
 ## Example Shape
 

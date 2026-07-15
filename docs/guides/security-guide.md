@@ -1,6 +1,6 @@
 # dev-connect Security Guide
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## Security Model
 

@@ -1,6 +1,6 @@
 # dev-connect Architecture Guide
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## Overview
 

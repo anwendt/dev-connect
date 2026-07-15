@@ -1,6 +1,6 @@
 # dev-connect Sequence Diagrams
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## Connect
 
@@ -17,7 +17,7 @@ sequenceDiagram
 
     Developer->>CLI: dev-connect connect dev01
     CLI->>CLI: Load YAML config
-    CLI->>K: kubectl version --client
+    CLI->>K: kubectl version
     CLI->>K: kubectl auth can-i
     K->>API: Authorization check
     API-->>K: Access decision
@@ -49,7 +49,28 @@ sequenceDiagram
     CLI->>K: Stop managed port-forward process
     CLI->>CLI: Remove temporary SSH config
     CLI->>CLI: Remove temporary known_hosts
-    CLI->>CLI: Update session state
+    CLI->>CLI: Clear session state
+
+## Status
+
+```mermaid
+sequenceDiagram
+    actor Developer
+    participant CLI as dev-connect
+    participant PF as Managed port-forward process
+
+    Developer->>CLI: dev-connect status --output json
+    CLI->>CLI: Load JSON session state
+    alt no state exists
+        CLI-->>Developer: status disconnected
+    else managed process is active
+        CLI->>PF: Check process
+        CLI-->>Developer: status connected with session metadata
+    else state exists but process is missing
+        CLI->>PF: Check process
+        CLI-->>Developer: status stale with session metadata
+    end
+```
 ```
 
 ## Host Key Rotation

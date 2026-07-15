@@ -142,7 +142,7 @@ The fake `kubectl` helper shall support configurable responses for:
 
 Fake `kubectl` shall simulate:
 
-- `kubectl version --client`.
+- `kubectl version`.
 - `kubectl auth can-i`.
 - namespace checks.
 - service discovery.

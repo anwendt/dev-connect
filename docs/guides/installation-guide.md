@@ -1,6 +1,6 @@
 # dev-connect Installation Guide
 
-Status: Implementation guide
+Status: Approved
 
 ## Scope
 

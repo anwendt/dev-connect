@@ -34,7 +34,7 @@ dev-connect connect dev01
 
 The client then:
 
-1. Loads the local `dev-connect.yaml` configuration.
+1. Loads the local `config.yaml` configuration.
 2. Resolves the target development server and Kubernetes gateway.
 3. Verifies `kubectl` connectivity.
 4. Verifies Rancher/Kubernetes RBAC permissions.
@@ -139,9 +139,9 @@ Default configuration locations:
 
 | Operating system | Default path |
 | --- | --- |
-| Windows | `%APPDATA%\dev-connect\dev-connect.yaml` |
-| Linux | `~/.config/dev-connect/dev-connect.yaml` |
-| macOS | `~/Library/Application Support/dev-connect/dev-connect.yaml` |
+| Windows | `%APPDATA%\dev-connect\config.yaml` |
+| Linux | `~/.config/dev-connect/config.yaml` |
+| macOS | `~/Library/Application Support/dev-connect/config.yaml` |
 
 The effective configuration location can be shown with:
 

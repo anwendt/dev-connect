@@ -1,6 +1,6 @@
 # dev-connect API Documentation
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 ## Scope
 
@@ -55,10 +55,62 @@ Example status response:
 ```json
 {
   "apiVersion": "v1",
-  "status": "Connected",
+  "status": "connected",
   "server": "dev01",
   "sessionId": "example-session-id",
-  "localPort": 55221
+  "localPort": 55221,
+  "kubernetesContext": "rancher-dev",
+  "namespace": "dev-connect",
+  "gateway": "dev01",
+  "reconnect": false,
+  "uptime": "1m0s"
+}
+```
+
+Example list response:
+
+```json
+{
+  "apiVersion": "v1",
+  "status": "ok",
+  "targets": [
+    {
+      "name": "dev01",
+      "gateway": "dev01",
+      "user": "developer"
+    }
+  ],
+  "clusters": [
+    {
+      "name": "dev",
+      "kubernetesContext": "rancher-dev"
+    }
+  ],
+  "gateways": [
+    {
+      "name": "dev01",
+      "namespace": "dev-connect",
+      "service": "dev-connect-gateway-dev01",
+      "port": 22
+    }
+  ],
+  "defaultContext": "platform-dev",
+  "defaultGateway": "dev01"
+}
+```
+
+Example version response:
+
+```json
+{
+  "apiVersion": "v1",
+  "status": "ok",
+  "version": "dev",
+  "commit": "unknown",
+  "buildDate": "unknown",
+  "goVersion": "go1.26",
+  "os": "windows",
+  "arch": "amd64"
 }
 ```
 
@@ -66,7 +118,7 @@ Example status response:
 
 - `apiVersion` is required.
 - Additive fields may be introduced within the same version.
-- Breaking changes require a new API version.
+- Status values are lowercase identifiers such as `prepared`, `connected`, `stale`, `disconnected`, `valid`, and `ok`.
 - Automation should ignore unknown fields.
 
 ## JSON Schemas

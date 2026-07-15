@@ -169,7 +169,7 @@ Detection:
 - Search `PATH`.
 - Support explicit configured path.
 - Support environment override where documented.
-- Run `kubectl version --client` or equivalent.
+- Run `kubectl version` for API reachability.
 
 Invocation:
 
@@ -273,7 +273,7 @@ Discovery order:
 
 1. `code` executable found in the user's `PATH`.
 2. Operating system default installation paths.
-3. User-configured launcher path in `dev-connect.yaml`.
+3. User-configured launcher path in `config.yaml`.
 
 Default Windows paths:
 
@@ -386,7 +386,7 @@ Example:
 ```json
 {
   "apiVersion": "v1",
-  "status": "Connected",
+  "status": "connected",
   "server": "dev01"
 }
 ```

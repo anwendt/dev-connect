@@ -1,6 +1,6 @@
 # dev-connect Documentation
 
-Status: Draft for Phase 10 review
+Status: Approved
 
 This directory contains the user-facing, operator-facing, and security-facing documentation for `dev-connect`.
 

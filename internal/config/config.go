@@ -17,7 +17,7 @@ const (
 	// Kind is the supported configuration document kind.
 	Kind = "DevConnectConfig"
 	// DefaultFileName is the default dev-connect configuration file name.
-	DefaultFileName = "dev-connect.yaml"
+	DefaultFileName = "config.yaml"
 )
 
 // Loaded contains a parsed configuration and the source path used.

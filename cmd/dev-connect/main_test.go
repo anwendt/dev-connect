@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/anwendt/dev-connect/internal/config"
 	"github.com/anwendt/dev-connect/internal/session"
@@ -74,6 +75,11 @@ func TestVersionOutputsVersionedJSON(t *testing.T) {
 	if got["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
 	}
+	for _, key := range []string{"version", "commit", "buildDate", "goVersion", "os", "arch"} {
+		if got[key] == "" {
+			t.Fatalf("version output missing %s: %#v", key, got)
+		}
+	}
 }
 
 func TestStatusOutputsVersionedJSON(t *testing.T) {
@@ -85,8 +91,8 @@ func TestStatusOutputsVersionedJSON(t *testing.T) {
 	if got["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
 	}
-	if got["status"] != "Disconnected" {
-		t.Fatalf("status = %v, want Disconnected", got["status"])
+	if got["status"] != "disconnected" {
+		t.Fatalf("status = %v, want disconnected", got["status"])
 	}
 }
 
@@ -97,8 +103,8 @@ func TestStatusReportsActiveSession(t *testing.T) {
 
 	stdout := executeCommand(t, "status", "--output", "json")
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Connected" {
-		t.Fatalf("status = %v, want Connected", got["status"])
+	if got["status"] != "connected" {
+		t.Fatalf("status = %v, want connected", got["status"])
 	}
 	if got["server"] != "dev01" {
 		t.Fatalf("server = %v, want dev01", got["server"])
@@ -108,6 +114,30 @@ func TestStatusReportsActiveSession(t *testing.T) {
 	}
 	if got["localPort"] != float64(55221) {
 		t.Fatalf("localPort = %v, want 55221", got["localPort"])
+	}
+	if got["gateway"] != "dev01" || got["namespace"] != "dev-connect" || got["kubernetesContext"] != "rancher-dev" {
+		t.Fatalf("status metadata = %#v", got)
+	}
+	if got["reconnect"] != false {
+		t.Fatalf("reconnect = %v, want false", got["reconnect"])
+	}
+}
+
+func TestStatusReportsStaleSession(t *testing.T) {
+	sessionDir := t.TempDir()
+	writeSessionStateWithPID(t, sessionDir, "/tmp/ssh_config", "/tmp/known_hosts", 424242)
+	t.Setenv("DEV_CONNECT_SESSION_DIR", sessionDir)
+
+	previousProcessExists := sessionProcessExists
+	sessionProcessExists = func(pid int) bool { return pid != 424242 }
+	t.Cleanup(func() {
+		sessionProcessExists = previousProcessExists
+	})
+
+	stdout := executeCommand(t, "status", "--output", "json")
+	got := decodeJSON(t, stdout)
+	if got["status"] != "stale" {
+		t.Fatalf("status = %v, want stale", got["status"])
 	}
 }
 
@@ -147,8 +177,8 @@ func TestDisconnectRemovesSessionAndSSHArtifacts(t *testing.T) {
 
 	stdout := executeCommand(t, "disconnect", "--output", "json")
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Disconnected" {
-		t.Fatalf("status = %v, want Disconnected", got["status"])
+	if got["status"] != "disconnected" {
+		t.Fatalf("status = %v, want disconnected", got["status"])
 	}
 	for _, path := range []string{filepath.Join(sessionDir, "session.json"), sshConfigPath, knownHostsPath, vscodeUserDataDir} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -172,8 +202,8 @@ func TestDisconnectWithoutSessionIsIdempotent(t *testing.T) {
 
 	stdout := executeCommand(t, "disconnect", "--output", "json")
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Disconnected" {
-		t.Fatalf("status = %v, want Disconnected", got["status"])
+	if got["status"] != "disconnected" {
+		t.Fatalf("status = %v, want disconnected", got["status"])
 	}
 }
 
@@ -198,6 +228,15 @@ func TestListOutputsVersionedJSON(t *testing.T) {
 	}
 	if target["name"] != "dev01" || target["gateway"] != "dev01" {
 		t.Fatalf("target = %#v, want dev01/dev01", target)
+	}
+	if got["defaultContext"] != "platform-dev" || got["defaultGateway"] != "dev01" {
+		t.Fatalf("defaults = %#v", got)
+	}
+	if clusters, ok := got["clusters"].([]any); !ok || len(clusters) != 1 {
+		t.Fatalf("clusters = %#v, want one cluster", got["clusters"])
+	}
+	if gateways, ok := got["gateways"].([]any); !ok || len(gateways) != 1 {
+		t.Fatalf("gateways = %#v, want one gateway", got["gateways"])
 	}
 }
 
@@ -236,12 +275,14 @@ func writeSessionStateDataWithUserSSHConfig(t *testing.T, sessionDir, sshConfigP
 		Target:            "dev01",
 		Gateway:           "dev01",
 		Namespace:         "dev-connect",
+		KubernetesContext: "rancher-dev",
 		LocalPort:         55221,
 		PortForwardPID:    portForwardPID,
 		SSHConfigPath:     sshConfigPath,
 		KnownHostsPath:    knownHostsPath,
 		UserSSHConfigPath: userSSHConfigPath,
 		VSCodeUserDataDir: vscodeUserDataDir,
+		StartedAt:         time.Now().UTC().Add(-time.Minute),
 		Reconnect:         false,
 	}
 	data, err := json.MarshalIndent(state, "", "  ")
@@ -280,8 +321,8 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	if got["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
 	}
-	if got["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", got["status"])
+	if got["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", got["status"])
 	}
 	if got["server"] != "dev01" {
 		t.Fatalf("server = %v, want dev01", got["server"])
@@ -291,6 +332,9 @@ func TestConnectSkeletonAcceptsTargetWithoutSideEffects(t *testing.T) {
 	}
 	if got["localPort"] != float64(55221) {
 		t.Fatalf("localPort = %v, want 55221", got["localPort"])
+	}
+	if got["gateway"] != "dev01" || got["namespace"] != "dev-connect" || got["kubernetesContext"] != "rancher-dev" {
+		t.Fatalf("connect metadata = %#v", got)
 	}
 	if _, err := os.Stat(filepath.Join(sessionDir, "session.json")); err != nil {
 		t.Fatalf("session state was not written: %v", err)
@@ -320,8 +364,8 @@ func TestConnectWritesManagedUserSSHConfigWhenEnabled(t *testing.T) {
 	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", got["status"])
+	if got["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", got["status"])
 	}
 	data, err := os.ReadFile(userSSHConfigPath)
 	if err != nil {
@@ -366,8 +410,8 @@ func TestConnectUsesClusterKubectlPathFromConfig(t *testing.T) {
 	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", got["status"])
+	if got["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", got["status"])
 	}
 }
 
@@ -383,8 +427,8 @@ func TestConnectUsesOnlyConfiguredContextByDefault(t *testing.T) {
 	stdout := executeCommand(t, "--config", configPath, "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", got["status"])
+	if got["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", got["status"])
 	}
 }
 
@@ -615,8 +659,8 @@ func TestConnectClearsStaleSessionState(t *testing.T) {
 	stdout := executeCommand(t, "--config", configPath, "--context", "platform-dev", "connect", "dev01", "--no-code", "--no-reconnect", "--output", "json")
 
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Prepared" {
-		t.Fatalf("status = %v, want Prepared", got["status"])
+	if got["status"] != "prepared" {
+		t.Fatalf("status = %v, want prepared", got["status"])
 	}
 	for _, path := range []string{sshConfigPath, knownHostsPath} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -627,7 +671,7 @@ func TestConnectClearsStaleSessionState(t *testing.T) {
 
 func TestConnectFailsBeforeSideEffectsWhenConfigInvalid(t *testing.T) {
 	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	configPath := filepath.Join(tempDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(`
 apiVersion: dev-connect/v0
 kind: DevConnectConfig
@@ -661,8 +705,8 @@ func TestLifecycleMetadataLogsUseStderr(t *testing.T) {
 	stdout, stderr := executeCommandStreams(t, "--log-format", "json", "--output", "json", "status")
 
 	got := decodeJSON(t, stdout)
-	if got["status"] != "Disconnected" {
-		t.Fatalf("status = %v, want Disconnected", got["status"])
+	if got["status"] != "disconnected" {
+		t.Fatalf("status = %v, want disconnected", got["status"])
 	}
 
 	var logRecord map[string]any
@@ -672,7 +716,7 @@ func TestLifecycleMetadataLogsUseStderr(t *testing.T) {
 	if logRecord["msg"] != "dev-connect command completed" {
 		t.Fatalf("log msg = %v, want command completed", logRecord["msg"])
 	}
-	if logRecord["command"] != "status" || logRecord["status"] != "Disconnected" {
+	if logRecord["command"] != "status" || logRecord["status"] != "disconnected" {
 		t.Fatalf("unexpected log record: %#v", logRecord)
 	}
 	if strings.Contains(stdout, "dev-connect command completed") {
@@ -680,19 +724,12 @@ func TestLifecycleMetadataLogsUseStderr(t *testing.T) {
 	}
 }
 
-func TestConfigLocationCommandPrintsDirectory(t *testing.T) {
-	cmd := newRootCommand()
-	var stdout bytes.Buffer
-	cmd.SetOut(&stdout)
-	cmd.SetErr(&stdout)
-	cmd.SetArgs([]string{"config", "location"})
+func TestConfigLocationCommandPrintsEffectiveExplicitPath(t *testing.T) {
+	configPath := writeCLIConfig(t)
+	stdout := executeCommand(t, "--config", configPath, "config", "location")
 
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute config location: %v", err)
-	}
-
-	if strings.TrimSpace(stdout.String()) == "" {
-		t.Fatal("config location output is empty")
+	if strings.TrimSpace(stdout) != configPath {
+		t.Fatalf("config location = %q, want %q", strings.TrimSpace(stdout), configPath)
 	}
 }
 
@@ -704,14 +741,14 @@ func TestConfigValidateOutputsVersionedJSON(t *testing.T) {
 	if got["apiVersion"] != "v1" {
 		t.Fatalf("apiVersion = %v, want v1", got["apiVersion"])
 	}
-	if got["status"] != "Valid" {
-		t.Fatalf("status = %v, want Valid", got["status"])
+	if got["status"] != "valid" {
+		t.Fatalf("status = %v, want valid", got["status"])
 	}
 }
 
 func TestConfigValidateRejectsInvalidConfig(t *testing.T) {
 	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	configPath := filepath.Join(tempDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte("apiVersion: dev-connect/v0\nkind: DevConnectConfig\n"), 0o600); err != nil {
 		t.Fatalf("write invalid config: %v", err)
 	}
@@ -857,7 +894,7 @@ func writeCLIConfigData(t *testing.T, suffix string) string {
 	t.Helper()
 
 	tempDir := t.TempDir()
-	configPath := filepath.Join(tempDir, "dev-connect.yaml")
+	configPath := filepath.Join(tempDir, "config.yaml")
 	data := []byte(`
 apiVersion: dev-connect/v1
 kind: DevConnectConfig

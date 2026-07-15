@@ -1,6 +1,6 @@
 # dev-connect Operations Runbook
 
-Status: Production readiness runbook
+Status: Approved
 
 ## Purpose
 
@@ -175,9 +175,9 @@ kubectl auth can-i create clusterrolebindings
 Use a production-like client configuration with approved pinned host keys.
 
 ```text
-dev-connect --config /path/to/dev-connect.yaml config validate
-dev-connect --config /path/to/dev-connect.yaml list
-dev-connect --config /path/to/dev-connect.yaml connect dev01 --no-code --output json
+dev-connect --config /path/to/config.yaml config validate
+dev-connect --config /path/to/config.yaml list
+dev-connect --config /path/to/config.yaml connect dev01 --no-code --output json
 dev-connect status --output json
 dev-connect disconnect --output json
 ```
@@ -185,7 +185,7 @@ dev-connect disconnect --output json
 Then run one full VS Code smoke test:
 
 ```text
-dev-connect --config /path/to/dev-connect.yaml connect dev01
+dev-connect --config /path/to/config.yaml connect dev01
 ```
 
 Expected result:
@@ -269,13 +269,13 @@ Use this process when a development server host key is intentionally changed.
 7. Validate the affected client configuration:
 
 ```text
-dev-connect --config /path/to/dev-connect.yaml config validate
+dev-connect --config /path/to/config.yaml config validate
 ```
 
 8. Run a smoke connection:
 
 ```text
-dev-connect --config /path/to/dev-connect.yaml connect dev01 --no-code
+dev-connect --config /path/to/config.yaml connect dev01 --no-code
 dev-connect disconnect
 ```
 
@@ -496,8 +496,8 @@ After every production change:
 kubectl rollout status deployment/dev-connect-gateway-dev01 -n dev-connect
 kubectl get pods -n dev-connect
 kubectl get servicemonitor,prometheusrule -n dev-connect
-dev-connect --config /path/to/dev-connect.yaml config validate
-dev-connect --config /path/to/dev-connect.yaml connect dev01 --no-code
+dev-connect --config /path/to/config.yaml config validate
+dev-connect --config /path/to/config.yaml connect dev01 --no-code
 dev-connect disconnect
 ```
 

@@ -1,6 +1,6 @@
 # dev-connect Implementation Kickoff Review
 
-Status: Managed tunnel and CLI lifecycle foundation completed
+Status: Approved
 
 ## Scope
 
@@ -154,7 +154,7 @@ Implemented configuration loading artifacts:
   - `DEV_CONNECT_CONFIG`,
   - OS-specific default directory,
   - development working-directory fallback.
-- Default file name: `dev-connect.yaml`.
+- Default file name: `config.yaml`.
 - Native default configuration directories:
   - Windows: `%APPDATA%\dev-connect`
   - Linux: `~/.config/dev-connect`
@@ -435,7 +435,7 @@ Implemented CLI integration artifacts:
   - session-scoped SSH directory.
 - The command writes local session state and temporary SSH config files before returning success.
 - JSON output now reports:
-  - `status: Prepared`,
+  - `status: prepared`,
   - target server,
   - generated session ID,
   - allocated local port.
@@ -507,7 +507,7 @@ Notes:
 
 Implemented CLI preflight artifacts:
 
-- `dev-connect connect <target>` now runs Kubernetes preflight before returning `Prepared`.
+- `dev-connect connect <target>` now runs Kubernetes preflight before returning `prepared`.
 - The CLI uses `kubectl.ExecutableRunner` to invoke the local `kubectl` binary.
 - `kubectl` executable discovery supports:
   - `DEV_CONNECT_KUBECTL_PATH` for deterministic tests and controlled overrides,

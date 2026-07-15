@@ -1,6 +1,6 @@
 # dev-connect Operator Guide
 
-Status: Implementation guide
+Status: Approved
 
 ## Purpose
 
