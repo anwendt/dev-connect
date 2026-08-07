@@ -86,8 +86,35 @@ type Target struct {
 
 // SSH describes optional user SSH configuration management.
 type SSH struct {
-	ManageUserConfig bool   `json:"manageUserConfig,omitempty"`
-	UserConfigPath   string `json:"userConfigPath,omitempty"`
+	ManageUserConfig    bool   `json:"manageUserConfig,omitempty"`
+	UserConfigPath      string `json:"userConfigPath,omitempty"`
+	ServerAliveInterval *int   `json:"serverAliveInterval,omitempty"`
+	ServerAliveCountMax *int   `json:"serverAliveCountMax,omitempty"`
+	TCPKeepAlive        *bool  `json:"tcpKeepAlive,omitempty"`
+}
+
+// EffectiveServerAliveInterval returns the configured SSH keepalive interval.
+func (settings SSH) EffectiveServerAliveInterval() int {
+	if settings.ServerAliveInterval == nil {
+		return 30
+	}
+	return *settings.ServerAliveInterval
+}
+
+// EffectiveServerAliveCountMax returns the configured SSH keepalive failure count.
+func (settings SSH) EffectiveServerAliveCountMax() int {
+	if settings.ServerAliveCountMax == nil {
+		return 3
+	}
+	return *settings.ServerAliveCountMax
+}
+
+// EffectiveTCPKeepAlive reports whether TCP keepalive should be enabled.
+func (settings SSH) EffectiveTCPKeepAlive() bool {
+	if settings.TCPKeepAlive == nil {
+		return true
+	}
+	return *settings.TCPKeepAlive
 }
 
 // VSCode describes VS Code launcher configuration.
@@ -194,6 +221,12 @@ func (cfg Config) Validate() error {
 	}
 	if cfg.Kind != Kind {
 		return fmt.Errorf("unsupported kind %q", cfg.Kind)
+	}
+	if cfg.SSH.ServerAliveInterval != nil && *cfg.SSH.ServerAliveInterval < 0 {
+		return fmt.Errorf("ssh.serverAliveInterval must be >= 0")
+	}
+	if cfg.SSH.ServerAliveCountMax != nil && *cfg.SSH.ServerAliveCountMax < 0 {
+		return fmt.Errorf("ssh.serverAliveCountMax must be >= 0")
 	}
 	for name, context := range cfg.Contexts {
 		if context.Cluster == "" {

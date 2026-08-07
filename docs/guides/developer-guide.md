@@ -167,7 +167,12 @@ GitHub Copilot continues to run locally inside VS Code Desktop. The gateway does
 
 Automatic reconnect is enabled by default.
 
-Reconnect only manages the `kubectl port-forward` tunnel lifecycle. It does not retry SSH passwords, alter SSH authentication, or bypass target server controls.
+`dev-connect` also writes SSH keepalive settings into the generated SSH config.
+These keepalives help keep the `kubectl port-forward` stream active through
+enterprise proxies and firewalls.
+
+Reconnect only manages the `kubectl port-forward` tunnel lifecycle. It does not
+retry SSH passwords, alter SSH authentication, or bypass target server controls.
 
 To disable reconnect for a session:
 

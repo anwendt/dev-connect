@@ -29,6 +29,9 @@ hostKeys:
 ssh:
   manageUserConfig: false
   userConfigPath: ""
+  serverAliveInterval: 15
+  serverAliveCountMax: 4
+  tcpKeepAlive: true
 vscode:
   launcherPath: 'C:\Program Files\Microsoft VS Code\bin\code.cmd'
   isolatedUserDataDir: true

@@ -11,13 +11,16 @@ import (
 
 // UserConfigOptions describes a managed block in the user's SSH config.
 type UserConfigOptions struct {
-	ConfigPath     string
-	Alias          string
-	User           string
-	IdentityFile   string
-	LocalHost      string
-	LocalPort      int
-	KnownHostsPath string
+	ConfigPath          string
+	Alias               string
+	User                string
+	IdentityFile        string
+	LocalHost           string
+	LocalPort           int
+	KnownHostsPath      string
+	ServerAliveInterval int
+	ServerAliveCountMax int
+	TCPKeepAlive        bool
 }
 
 // DefaultUserConfigPath returns the platform default OpenSSH user config path.
@@ -107,11 +110,14 @@ func readOptional(path string) (string, error) {
 
 func renderManagedBlock(options UserConfigOptions) string {
 	config := renderConfig(SessionOptions{
-		Alias:        options.Alias,
-		User:         options.User,
-		IdentityFile: options.IdentityFile,
-		LocalHost:    options.LocalHost,
-		LocalPort:    options.LocalPort,
+		Alias:               options.Alias,
+		User:                options.User,
+		IdentityFile:        options.IdentityFile,
+		LocalHost:           options.LocalHost,
+		LocalPort:           options.LocalPort,
+		ServerAliveInterval: options.ServerAliveInterval,
+		ServerAliveCountMax: options.ServerAliveCountMax,
+		TCPKeepAlive:        options.TCPKeepAlive,
 	}, options.KnownHostsPath)
 	return beginMarker(options.Alias) + "\n" + config + endMarker(options.Alias) + "\n"
 }

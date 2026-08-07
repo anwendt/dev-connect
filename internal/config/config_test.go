@@ -105,6 +105,62 @@ ssh:
 	}
 }
 
+func TestParseSSHKeepAliveSettings(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+ssh:
+  serverAliveInterval: 20
+  serverAliveCountMax: 4
+  tcpKeepAlive: false
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if got := cfg.SSH.EffectiveServerAliveInterval(); got != 20 {
+		t.Fatalf("serverAliveInterval = %d, want 20", got)
+	}
+	if got := cfg.SSH.EffectiveServerAliveCountMax(); got != 4 {
+		t.Fatalf("serverAliveCountMax = %d, want 4", got)
+	}
+	if cfg.SSH.EffectiveTCPKeepAlive() {
+		t.Fatal("tcpKeepAlive false was not honored")
+	}
+}
+
+func TestSSHKeepAliveDefaults(t *testing.T) {
+	cfg, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+`))
+	if err != nil {
+		t.Fatalf("parse config: %v", err)
+	}
+
+	if got := cfg.SSH.EffectiveServerAliveInterval(); got != 30 {
+		t.Fatalf("default serverAliveInterval = %d, want 30", got)
+	}
+	if got := cfg.SSH.EffectiveServerAliveCountMax(); got != 3 {
+		t.Fatalf("default serverAliveCountMax = %d, want 3", got)
+	}
+	if !cfg.SSH.EffectiveTCPKeepAlive() {
+		t.Fatal("tcpKeepAlive did not default to true")
+	}
+}
+
+func TestParseRejectsNegativeSSHKeepAliveSettings(t *testing.T) {
+	_, err := Parse([]byte(`
+apiVersion: dev-connect/v1
+kind: DevConnectConfig
+ssh:
+  serverAliveInterval: -1
+`))
+	if err == nil {
+		t.Fatal("negative serverAliveInterval accepted")
+	}
+}
+
 func TestParseClusterKubectlPath(t *testing.T) {
 	cfg, err := Parse([]byte(`
 apiVersion: dev-connect/v1

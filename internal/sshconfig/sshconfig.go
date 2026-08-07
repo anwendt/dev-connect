@@ -12,13 +12,16 @@ const fileMode = 0o600
 
 // SessionOptions describes temporary SSH files for one dev-connect session.
 type SessionOptions struct {
-	Dir          string
-	Alias        string
-	User         string
-	IdentityFile string
-	LocalHost    string
-	LocalPort    int
-	HostKey      string
+	Dir                 string
+	Alias               string
+	User                string
+	IdentityFile        string
+	LocalHost           string
+	LocalPort           int
+	HostKey             string
+	ServerAliveInterval int
+	ServerAliveCountMax int
+	TCPKeepAlive        bool
 }
 
 // SessionFiles identifies generated temporary SSH files.
@@ -102,6 +105,17 @@ func renderConfig(options SessionOptions, knownHostsPath string) string {
 		identityLine := "  IdentityFile " + quoteConfigValue(options.IdentityFile)
 		insertAt := len(lines) - 1
 		lines = append(lines[:insertAt], append([]string{identityLine}, lines[insertAt:]...)...)
+	}
+	if options.ServerAliveInterval > 0 {
+		lines = append(lines, fmt.Sprintf("  ServerAliveInterval %d", options.ServerAliveInterval))
+	}
+	if options.ServerAliveCountMax > 0 {
+		lines = append(lines, fmt.Sprintf("  ServerAliveCountMax %d", options.ServerAliveCountMax))
+	}
+	if options.TCPKeepAlive {
+		lines = append(lines, "  TCPKeepAlive yes")
+	} else {
+		lines = append(lines, "  TCPKeepAlive no")
 	}
 	return strings.Join(lines, "\n") + "\n"
 }

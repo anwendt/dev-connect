@@ -38,13 +38,16 @@ func TestUpsertManagedBlockCreatesUserSSHConfig(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), ".ssh", "config")
 
 	if err := UpsertManagedBlock(UserConfigOptions{
-		ConfigPath:     configPath,
-		Alias:          "dev01",
-		User:           "developer",
-		IdentityFile:   filepath.Join(t.TempDir(), "id dev01"),
-		LocalHost:      "127.0.0.1",
-		LocalPort:      55221,
-		KnownHostsPath: filepath.Join(t.TempDir(), "known_hosts"),
+		ConfigPath:          configPath,
+		Alias:               "dev01",
+		User:                "developer",
+		IdentityFile:        filepath.Join(t.TempDir(), "id dev01"),
+		LocalHost:           "127.0.0.1",
+		LocalPort:           55221,
+		KnownHostsPath:      filepath.Join(t.TempDir(), "known_hosts"),
+		ServerAliveInterval: 30,
+		ServerAliveCountMax: 3,
+		TCPKeepAlive:        true,
 	}); err != nil {
 		t.Fatalf("upsert managed block: %v", err)
 	}
@@ -58,6 +61,9 @@ func TestUpsertManagedBlockCreatesUserSSHConfig(t *testing.T) {
 	assertContains(t, data, "IdentityFile ")
 	assertContains(t, data, "UserKnownHostsFile ")
 	assertContains(t, data, "StrictHostKeyChecking yes")
+	assertContains(t, data, "ServerAliveInterval 30")
+	assertContains(t, data, "ServerAliveCountMax 3")
+	assertContains(t, data, "TCPKeepAlive yes")
 	assertContains(t, data, "# END dev-connect dev01")
 }
 

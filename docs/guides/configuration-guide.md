@@ -89,6 +89,9 @@ targets:
 ssh:
   manageUserConfig: false
   userConfigPath: ""
+  serverAliveInterval: 30
+  serverAliveCountMax: 3
+  tcpKeepAlive: true
 vscode:
   launcherPath: ""
   isolatedUserDataDir: true
@@ -187,6 +190,36 @@ vscode:
 
 With this combination, VS Code uses the normal local profile while OpenSSH can
 resolve the dev-connect target alias through the managed SSH config block.
+
+## SSH Keepalive Settings
+
+`dev-connect` writes OpenSSH keepalive settings into the temporary session SSH
+configuration and, when enabled, into the managed user SSH config block.
+
+Defaults:
+
+```yaml
+ssh:
+  serverAliveInterval: 30
+  serverAliveCountMax: 3
+  tcpKeepAlive: true
+```
+
+These settings cause the SSH client to send protocol-level keepalive messages
+through the `kubectl port-forward` stream. This reduces idle tunnel drops caused
+by enterprise proxies, firewalls, or long-distance network paths.
+
+For aggressive proxy idle timeouts, use a shorter interval:
+
+```yaml
+ssh:
+  serverAliveInterval: 15
+  serverAliveCountMax: 4
+  tcpKeepAlive: true
+```
+
+`serverAliveInterval: 0` disables OpenSSH `ServerAliveInterval`. Negative values
+are rejected during configuration validation.
 
 ## VS Code Remote Server Setup
 

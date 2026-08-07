@@ -64,6 +64,28 @@ func TestWriteSessionFilesIncludesIdentityFileWhenConfigured(t *testing.T) {
 	assertContains(t, configData, "IdentitiesOnly yes")
 }
 
+func TestWriteSessionFilesIncludesKeepAliveOptions(t *testing.T) {
+	files, err := WriteSessionFiles(SessionOptions{
+		Dir:                 t.TempDir(),
+		Alias:               "dev01",
+		User:                "developer",
+		LocalHost:           "127.0.0.1",
+		LocalPort:           55221,
+		HostKey:             hostKeyV1,
+		ServerAliveInterval: 30,
+		ServerAliveCountMax: 3,
+		TCPKeepAlive:        true,
+	})
+	if err != nil {
+		t.Fatalf("write session files: %v", err)
+	}
+
+	configData := readFile(t, files.ConfigPath)
+	assertContains(t, configData, "ServerAliveInterval 30")
+	assertContains(t, configData, "ServerAliveCountMax 3")
+	assertContains(t, configData, "TCPKeepAlive yes")
+}
+
 func TestWriteSessionFilesQuotesKnownHostsPathWithSpaces(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "Application Support", "dev-connect", "session", "ssh")
 

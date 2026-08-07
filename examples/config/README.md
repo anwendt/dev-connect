@@ -17,6 +17,10 @@ Targets may set `identityFile` to select a local private key without editing the
 user's SSH config. The private key file remains local and is not copied or
 stored by `dev-connect`.
 
+SSH keepalive settings under `ssh` are written into generated OpenSSH
+configuration. Use shorter intervals such as `serverAliveInterval: 15` when an
+enterprise proxy closes idle SSH or port-forward streams.
+
 When `hostKeyRef` is omitted, `dev-connect` uses the target name as the host key
 reference. For example, target `dev01` uses `hostKeys.dev01`.
 
@@ -25,8 +29,8 @@ reference. For example, target `dev01` uses `hostKeys.dev01`.
 | File | Purpose |
 | --- | --- |
 | `dev01-basic.yaml` | Minimal single-cluster configuration without proxy override. |
-| `dev01-proxy.yaml` | Single-cluster configuration with a process-scoped proxy override for `kubectl`. |
-| `dev01-remote-copilot-proxy.yaml` | Windows Remote SSH configuration that prepares remote VS Code Server proxy settings for Copilot. |
+| `dev01-proxy.yaml` | Single-cluster configuration with process-scoped proxy override for `kubectl` and shorter SSH keepalives. |
+| `dev01-remote-copilot-proxy.yaml` | Windows Remote SSH configuration that prepares remote VS Code Server proxy settings for Copilot and shorter SSH keepalives. |
 | `multi-cluster-proxy.yaml` | Multiple Rancher/Kubernetes contexts, multiple gateways, and per-cluster proxy settings. |
 | `windows-bundled-kubectl.yaml` | Windows configuration that points to a bundled `kubectl.exe` next to `dev-connect.exe`. |
 

@@ -86,13 +86,16 @@ func Prepare(options Options) (Result, error) {
 	}
 
 	sshFiles, err := sshconfig.WriteSessionFiles(sshconfig.SessionOptions{
-		Dir:          sshDir,
-		Alias:        options.TargetName,
-		User:         target.User,
-		IdentityFile: target.IdentityFile,
-		LocalHost:    allocation.Host,
-		LocalPort:    allocation.Port,
-		HostKey:      hostKey,
+		Dir:                 sshDir,
+		Alias:               options.TargetName,
+		User:                target.User,
+		IdentityFile:        target.IdentityFile,
+		LocalHost:           allocation.Host,
+		LocalPort:           allocation.Port,
+		HostKey:             hostKey,
+		ServerAliveInterval: options.Config.SSH.EffectiveServerAliveInterval(),
+		ServerAliveCountMax: options.Config.SSH.EffectiveServerAliveCountMax(),
+		TCPKeepAlive:        options.Config.SSH.EffectiveTCPKeepAlive(),
 	})
 	if err != nil {
 		return Result{}, err

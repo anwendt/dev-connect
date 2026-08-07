@@ -190,13 +190,16 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 					return err
 				}
 				if err := sshconfig.UpsertManagedBlock(sshconfig.UserConfigOptions{
-					ConfigPath:     userSSHConfigPath,
-					Alias:          result.TargetName,
-					User:           result.Target.User,
-					IdentityFile:   result.Target.IdentityFile,
-					LocalHost:      result.LocalHost,
-					LocalPort:      result.LocalPort,
-					KnownHostsPath: result.State.KnownHostsPath,
+					ConfigPath:          userSSHConfigPath,
+					Alias:               result.TargetName,
+					User:                result.Target.User,
+					IdentityFile:        result.Target.IdentityFile,
+					LocalHost:           result.LocalHost,
+					LocalPort:           result.LocalPort,
+					KnownHostsPath:      result.State.KnownHostsPath,
+					ServerAliveInterval: loaded.Config.SSH.EffectiveServerAliveInterval(),
+					ServerAliveCountMax: loaded.Config.SSH.EffectiveServerAliveCountMax(),
+					TCPKeepAlive:        loaded.Config.SSH.EffectiveTCPKeepAlive(),
 				}); err != nil {
 					_ = cleanupSessionArtifacts(result.State)
 					_ = (session.Store{Dir: result.SessionDir}).Clear()

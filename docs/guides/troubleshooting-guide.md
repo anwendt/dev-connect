@@ -102,14 +102,27 @@ Action:
 
 Expected behavior:
 
-- automatic reconnect starts by default for managed tunnel failures.
+- SSH keepalive is enabled by default in generated SSH configuration.
+- Startup reconnect is enabled by default for transient `kubectl port-forward`
+  startup failures.
 
 Checks:
 
 - confirm Kubernetes API health,
 - check local network stability,
-- inspect metadata logs for reconnect count and exit code,
-- verify gateway Pod restarts or node disruption events.
+- verify gateway Pod restarts or node disruption events,
+- lower `ssh.serverAliveInterval` when a proxy closes idle connections,
+- verify the generated SSH config contains `ServerAliveInterval`,
+  `ServerAliveCountMax`, and `TCPKeepAlive`.
+
+Example for aggressive proxy idle timeouts:
+
+```yaml
+ssh:
+  serverAliveInterval: 15
+  serverAliveCountMax: 4
+  tcpKeepAlive: true
+```
 
 ## Cleanup Problems
 

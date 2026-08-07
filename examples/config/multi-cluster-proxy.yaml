@@ -45,6 +45,9 @@ hostKeys:
 ssh:
   manageUserConfig: false
   userConfigPath: ""
+  serverAliveInterval: 30
+  serverAliveCountMax: 3
+  tcpKeepAlive: true
 vscode:
   launcherPath: ""
   isolatedUserDataDir: true
