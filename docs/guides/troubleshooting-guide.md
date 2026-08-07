@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+-->
+
 # dev-connect Troubleshooting Guide
 
 Status: Approved
@@ -103,8 +108,9 @@ Action:
 Expected behavior:
 
 - SSH keepalive is enabled by default in generated SSH configuration.
-- Startup reconnect is enabled by default for transient `kubectl port-forward`
-  startup failures.
+- A local `dev-connect tunnel-supervisor` process is started by `connect`.
+- The supervisor restarts `kubectl port-forward` after transient process exits
+  unless `--no-reconnect` was used.
 
 Checks:
 
@@ -113,7 +119,9 @@ Checks:
 - verify gateway Pod restarts or node disruption events,
 - lower `ssh.serverAliveInterval` when a proxy closes idle connections,
 - verify the generated SSH config contains `ServerAliveInterval`,
-  `ServerAliveCountMax`, and `TCPKeepAlive`.
+  `ServerAliveCountMax`, and `TCPKeepAlive`,
+- verify `dev-connect status --output json` reports an active session PID,
+- inspect the local `supervisor.log` in the dev-connect session directory.
 
 Example for aggressive proxy idle timeouts:
 

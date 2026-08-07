@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 package main
 
 import (
@@ -775,6 +778,7 @@ func executeCommand(t *testing.T, args ...string) string {
 func executeCommandStreams(t *testing.T, args ...string) (string, string) {
 	t.Helper()
 
+	t.Setenv("DEV_CONNECT_TEST_INLINE_TUNNEL", "1")
 	cmd := newRootCommand()
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

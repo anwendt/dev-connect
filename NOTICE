@@ -1,0 +1,10 @@
+dev-connect
+Copyright 2026 Andres Wendt
+
+This product is licensed under the Apache License, Version 2.0.
+
+Third-party dependencies with licenses different from Apache-2.0:
+
+- github.com/spf13/pflag, BSD-3-Clause
+- golang.org/x/crypto, BSD-3-Clause
+- golang.org/x/sys, BSD-3-Clause

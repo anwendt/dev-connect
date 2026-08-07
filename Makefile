@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 .PHONY: help fmt fmt-check lint license-check test-unit test-integration test-security test-e2e test-performance-local test build build-all package-windows-bundle checksums container-build container-push container-scan helm-lint helm-template helm-package helm-push kustomize-build sbom sign release-check clean
 
 GO ?= go

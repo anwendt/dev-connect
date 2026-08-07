@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+-->
+
 # dev-connect Developer Guide
 
 Status: Approved
@@ -171,8 +176,15 @@ Automatic reconnect is enabled by default.
 These keepalives help keep the `kubectl port-forward` stream active through
 enterprise proxies and firewalls.
 
-Reconnect only manages the `kubectl port-forward` tunnel lifecycle. It does not
-retry SSH passwords, alter SSH authentication, or bypass target server controls.
+`connect` starts a local `dev-connect tunnel-supervisor` process. The supervisor
+starts `kubectl port-forward`, waits for readiness, and restarts `kubectl
+port-forward` if the process exits later because of a transient proxy, network,
+or API-stream interruption.
+
+Reconnect only manages the `kubectl port-forward` process lifecycle. It does
+not retry SSH passwords, alter SSH authentication, or bypass target server
+controls. Existing VS Code Remote SSH sessions may still need to reconnect on
+the SSH layer after a transport interruption.
 
 To disable reconnect for a session:
 

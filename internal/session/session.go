@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 package session
 
 import (
@@ -67,11 +70,7 @@ func TerminateProcess(pid int) error {
 	if pid <= 0 {
 		return nil
 	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return fmt.Errorf("find process %d: %w", pid, err)
-	}
-	if err := process.Kill(); err != nil {
+	if err := terminateProcess(pid); err != nil {
 		return fmt.Errorf("terminate process %d: %w", pid, err)
 	}
 	return nil

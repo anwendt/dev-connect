@@ -1,8 +1,16 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 //go:build windows
 
 package session
 
-import "golang.org/x/sys/windows"
+import (
+	"os/exec"
+	"strconv"
+
+	"golang.org/x/sys/windows"
+)
 
 // ProcessExists reports whether pid currently refers to a running process.
 func ProcessExists(pid int) bool {
@@ -15,4 +23,9 @@ func ProcessExists(pid int) bool {
 	}
 	_ = windows.CloseHandle(handle)
 	return true
+}
+
+func terminateProcess(pid int) error {
+	cmd := exec.Command("taskkill", "/PID", strconv.Itoa(pid), "/T", "/F")
+	return cmd.Run()
 }

@@ -1,3 +1,8 @@
+{{/*
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+*/}}
+
 {{- define "dev-connect-gateway.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

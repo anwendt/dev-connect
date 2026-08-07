@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 //go:build !windows
 
 package session
@@ -17,4 +20,11 @@ func ProcessExists(pid int) bool {
 		return true
 	}
 	return !errors.Is(err, syscall.ESRCH)
+}
+
+func terminateProcess(pid int) error {
+	if err := syscall.Kill(-pid, syscall.SIGKILL); err == nil {
+		return nil
+	}
+	return syscall.Kill(pid, syscall.SIGKILL)
 }

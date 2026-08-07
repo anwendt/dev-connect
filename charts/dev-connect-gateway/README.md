@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+-->
+
 # dev-connect-gateway Helm Chart
 
 This chart deploys one HAProxy-based TCP gateway for a single dev-connect

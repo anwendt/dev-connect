@@ -1,17 +1,24 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 // Package main provides the dev-connect CLI entry point.
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -91,6 +98,7 @@ func newRootCommand() *cobra.Command {
 	cmd.AddCommand(newListCommand(&opts))
 	cmd.AddCommand(newVersionCommand())
 	cmd.AddCommand(newConfigCommand(&opts))
+	cmd.AddCommand(newTunnelSupervisorCommand(&opts))
 	helpCommand := newHelpCommand(cmd)
 	cmd.AddCommand(helpCommand)
 	cmd.SetHelpCommand(helpCommand)
@@ -167,7 +175,7 @@ func newConnectCommand(opts *cliOptions) *cobra.Command {
 				return err
 			}
 
-			tunnelResult, err := startTunnel(cmd.Context(), *opts, cluster, result)
+			tunnelResult, err := startTunnelSupervisor(cmd.Context(), *opts, loaded.Path, cluster, result)
 			if err != nil {
 				_ = sshconfig.Cleanup(result.SSHFiles)
 				_ = (session.Store{Dir: result.SessionDir}).Clear()
@@ -294,6 +302,242 @@ func startTunnel(ctx context.Context, opts cliOptions, cluster config.Cluster, r
 		Kubeconfig:  cluster.Kubeconfig,
 		Reconnect:   !opts.noReconnect,
 	})
+}
+
+type supervisorOptions struct {
+	sessionDir string
+	readyFile  string
+}
+
+func newTunnelSupervisorCommand(opts *cliOptions) *cobra.Command {
+	supervisorOpts := supervisorOptions{}
+	cmd := &cobra.Command{
+		Use:    "tunnel-supervisor <target>",
+		Hidden: true,
+		Args:   cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTunnelSupervisor(cmd.Context(), *opts, supervisorOpts, args[0])
+		},
+	}
+	cmd.Flags().StringVar(&supervisorOpts.sessionDir, "session-dir", "", "Path to dev-connect session directory")
+	cmd.Flags().StringVar(&supervisorOpts.readyFile, "ready-file", "", "Path written after initial tunnel readiness")
+	return cmd
+}
+
+func runTunnelSupervisor(ctx context.Context, opts cliOptions, supervisorOpts supervisorOptions, targetName string) error {
+	if supervisorOpts.sessionDir == "" {
+		return errors.New("supervisor session directory is required")
+	}
+	if supervisorOpts.readyFile == "" {
+		return errors.New("supervisor ready file is required")
+	}
+
+	loaded, err := loadConfig(opts)
+	if err != nil {
+		return err
+	}
+	cluster, err := selectedCluster(loaded.Config, opts)
+	if err != nil {
+		return err
+	}
+	store := session.Store{Dir: supervisorOpts.sessionDir}
+	state, err := store.Load()
+	if err != nil {
+		return err
+	}
+	if state.Target != targetName {
+		return fmt.Errorf("session target %q does not match supervisor target %q", state.Target, targetName)
+	}
+	gateway, ok := loaded.Config.Gateways[state.Gateway]
+	if !ok {
+		return fmt.Errorf("unknown gateway %q", state.Gateway)
+	}
+	kubectlPath, err := kubectlPath(opts, cluster)
+	if err != nil {
+		return err
+	}
+
+	command := kubectl.PortForwardServiceCommand(kubectl.PortForwardOptions{
+		Namespace:   state.Namespace,
+		Service:     gateway.Service,
+		LocalPort:   state.LocalPort,
+		RemotePort:  gateway.Port,
+		ContextName: cluster.KubernetesContext,
+		Kubeconfig:  cluster.Kubeconfig,
+	})
+
+	backoff := time.Second
+	for attempt := 1; ; attempt++ {
+		err := runSupervisedPortForward(ctx, kubectlPath, kubectlBaseEnv(cluster), command, supervisorOpts.readyFile)
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if !state.Reconnect || opts.noReconnect {
+			return err
+		}
+		if err != nil {
+			slog.Warn("kubectl port-forward exited; reconnecting", "attempt", attempt, "error", err)
+		} else {
+			slog.Warn("kubectl port-forward exited; reconnecting", "attempt", attempt)
+		}
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+		if backoff < 30*time.Second {
+			backoff *= 2
+			if backoff > 30*time.Second {
+				backoff = 30 * time.Second
+			}
+		}
+	}
+}
+
+func runSupervisedPortForward(ctx context.Context, kubectlPath string, env []string, command kubectl.Command, readyFile string) error {
+	cmd := exec.CommandContext(ctx, kubectlPath, command.Args...)
+	cmd.Env = mergeCommandEnv(env, command.Env)
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("open kubectl stdout pipe: %w", err)
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("open kubectl stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start kubectl port-forward: %w", err)
+	}
+
+	var readyOnce sync.Once
+	scanDone := make(chan struct{}, 2)
+	go scanSupervisorOutput(stdoutPipe, readyFile, &readyOnce, scanDone)
+	go scanSupervisorOutput(stderrPipe, readyFile, &readyOnce, scanDone)
+
+	waitErr := cmd.Wait()
+	<-scanDone
+	<-scanDone
+	close(scanDone)
+	if waitErr != nil {
+		return waitErr
+	}
+	return nil
+}
+
+func scanSupervisorOutput(reader io.Reader, readyFile string, readyOnce *sync.Once, done chan<- struct{}) {
+	defer func() {
+		done <- struct{}{}
+	}()
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+		if tunnel.IsReadyOutput(line) {
+			readyOnce.Do(func() {
+				_ = os.WriteFile(readyFile, []byte("ready\n"), 0o600)
+			})
+		}
+	}
+}
+
+func mergeCommandEnv(base, overrides []string) []string {
+	env := append([]string(nil), base...)
+	env = append(env, overrides...)
+	return env
+}
+
+func startTunnelSupervisor(ctx context.Context, opts cliOptions, configPath string, cluster config.Cluster, result connect.Result) (tunnel.Result, error) {
+	if os.Getenv("DEV_CONNECT_TEST_INLINE_TUNNEL") == "1" {
+		return startTunnel(ctx, opts, cluster, result)
+	}
+	if opts.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.timeout)
+		defer cancel()
+	}
+
+	executable, err := os.Executable()
+	if err != nil {
+		return tunnel.Result{}, fmt.Errorf("resolve dev-connect executable: %w", err)
+	}
+
+	readyFile := filepath.Join(result.SessionDir, "supervisor.ready")
+	logFile := filepath.Join(result.SessionDir, "supervisor.log")
+	args := supervisorArgs(opts, configPath, result.TargetName, result.SessionDir, readyFile)
+	cmd := exec.Command(executable, args...)
+	configureDetachedCommand(cmd)
+
+	if err := os.MkdirAll(result.SessionDir, 0o700); err != nil {
+		return tunnel.Result{}, fmt.Errorf("create session directory: %w", err)
+	}
+	logHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return tunnel.Result{}, fmt.Errorf("open supervisor log: %w", err)
+	}
+	defer func() {
+		_ = logHandle.Close()
+	}()
+	cmd.Stdout = logHandle
+	cmd.Stderr = logHandle
+
+	if err := cmd.Start(); err != nil {
+		return tunnel.Result{}, fmt.Errorf("start tunnel supervisor: %w", err)
+	}
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if _, err := os.Stat(readyFile); err == nil {
+				return tunnel.Result{Ready: true, Attempts: 1, PID: cmd.Process.Pid}, nil
+			}
+		case err := <-waitCh:
+			if err != nil {
+				return tunnel.Result{}, fmt.Errorf("tunnel supervisor exited before readiness: %w", err)
+			}
+			return tunnel.Result{}, errors.New("tunnel supervisor exited before readiness")
+		case <-ctx.Done():
+			_ = session.TerminateProcess(cmd.Process.Pid)
+			return tunnel.Result{}, ctx.Err()
+		}
+	}
+}
+
+func supervisorArgs(opts cliOptions, configPath, target, sessionDir, readyFile string) []string {
+	args := []string{}
+	if configPath != "" {
+		args = append(args, "--config", configPath)
+	}
+	if opts.contextName != "" {
+		args = append(args, "--context", opts.contextName)
+	}
+	if opts.clusterName != "" {
+		args = append(args, "--cluster", opts.clusterName)
+	}
+	if opts.gatewayName != "" {
+		args = append(args, "--gateway", opts.gatewayName)
+	}
+	if opts.kubectlPath != "" {
+		args = append(args, "--kubectl-path", opts.kubectlPath)
+	}
+	if opts.logLevel != "" {
+		args = append(args, "--log-level", opts.logLevel)
+	}
+	if opts.logFormat != "" {
+		args = append(args, "--log-format", opts.logFormat)
+	}
+	if opts.noReconnect {
+		args = append(args, "--no-reconnect")
+	}
+	args = append(args, "tunnel-supervisor", target, "--session-dir", sessionDir, "--ready-file", readyFile)
+	return args
 }
 
 func launchVSCode(ctx context.Context, cfg config.Config, targetAlias, userDataDir string) error {

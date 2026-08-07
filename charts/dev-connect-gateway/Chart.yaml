@@ -1,7 +1,10 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Andres Wendt <andres.wendt@wendt.cc>
+
 apiVersion: v2
 name: dev-connect-gateway
 description: TCP-only HAProxy gateway for dev-connect Remote SSH access
 type: application
-version: 0.2.8
-appVersion: "0.2.1"
+version: 0.3.0
+appVersion: "0.3.0"
 kubeVersion: ">=1.30.0-0"
