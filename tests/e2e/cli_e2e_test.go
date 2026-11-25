@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/anwendt/dev-connect/internal/session"
 )
@@ -21,6 +22,13 @@ func TestCLIConnectSkeletonEndToEnd(t *testing.T) {
 	sessionDir := t.TempDir()
 	sshDir := t.TempDir()
 	kubectlPath := writeFakeKubectl(t, "yes")
+	// connect leaves the tunnel supervisor running in the background. It must
+	// stop before the temporary directories are removed: Windows cannot delete
+	// the executable of a running process. Registered after the TempDir calls,
+	// this cleanup runs before theirs.
+	t.Cleanup(func() {
+		stopSession(t, binary, configPath, sessionDir, sshDir, kubectlPath)
+	})
 
 	output := runCLI(t, binary,
 		"--config", configPath,
@@ -170,6 +178,38 @@ func buildCLI(t *testing.T) string {
 		t.Fatalf("build CLI: %v\n%s", err, string(output))
 	}
 	return binary
+}
+
+// stopSession disconnects the managed session and waits until the CLI binary
+// can be opened for writing again, which Windows refuses while a process still
+// runs from it.
+func stopSession(t *testing.T, binary, configPath, sessionDir, sshDir, kubectlPath string) {
+	t.Helper()
+
+	cmd := exec.Command(binary, "--config", configPath, "disconnect")
+	cmd.Env = append(os.Environ(),
+		"DEV_CONNECT_CONFIG=",
+		"DEV_CONNECT_SESSION_DIR="+sessionDir,
+		"DEV_CONNECT_SSH_DIR="+sshDir,
+		"DEV_CONNECT_KUBECTL_PATH="+kubectlPath,
+	)
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Logf("disconnect during cleanup: %v\n%s", err, string(output))
+	}
+
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		file, err := os.OpenFile(binary, os.O_RDWR, 0)
+		if err == nil {
+			_ = file.Close()
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Logf("CLI binary still in use after disconnect: %v", err)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 type envArg string
