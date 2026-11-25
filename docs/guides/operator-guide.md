@@ -154,7 +154,7 @@ Before production rollout, operators must validate:
 
 - Rancher-managed group membership for `dev-connect-users`.
 - Namespace-scoped RBAC grants only the approved resources and verbs.
-- `kubectl auth can-i create pods/portforward` succeeds for authorized users.
+- `kubectl auth can-i create pods --subresource=portforward` succeeds for authorized users.
 - A functional `kubectl port-forward` preflight succeeds through Rancher.
 - NetworkPolicy allows only Kubernetes API ingress to the Service path and egress to approved backend SSH targets.
 - DNS egress is enabled only for DNS-based backend addressing.

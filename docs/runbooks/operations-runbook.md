@@ -163,7 +163,7 @@ Run checks as an authorized developer identity:
 ```text
 kubectl auth can-i get services -n dev-connect
 kubectl auth can-i get pods -n dev-connect
-kubectl auth can-i create pods/portforward -n dev-connect
+kubectl auth can-i create pods --subresource=portforward -n dev-connect
 ```
 
 Forbidden checks should remain denied:
@@ -365,7 +365,7 @@ Symptoms:
 Checks:
 
 ```text
-kubectl auth can-i create pods/portforward -n dev-connect --as <user-or-group>
+kubectl auth can-i create pods --subresource=portforward -n dev-connect --as <user-or-group>
 kubectl get role,rolebinding -n dev-connect
 ```
 
