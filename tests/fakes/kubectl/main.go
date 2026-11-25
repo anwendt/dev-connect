@@ -20,7 +20,7 @@ func main() {
 	case contains(args, "version"):
 		fmt.Println("Client Version: v1.30.0")
 		fmt.Println("Server Version: v1.30.0")
-	case strings.Contains(joined, "auth can-i create pods/portforward"):
+	case strings.Contains(joined, "auth can-i create pods --subresource=portforward"):
 		canI := os.Getenv("DEV_CONNECT_FAKE_KUBECTL_CAN_I")
 		if canI == "" {
 			canI = "yes"

@@ -469,7 +469,7 @@ Implemented Kubernetes preflight artifacts:
 - `internal/preflight` package for ordered Kubernetes validation.
 - Preflight validation sequence:
   - verify Kubernetes API reachability through `kubectl version`,
-  - verify RBAC through `kubectl auth can-i create pods/portforward`,
+  - verify RBAC through `kubectl auth can-i create pods --subresource=portforward`,
   - verify functional port-forward behavior through a temporary `kubectl port-forward` command.
 - RBAC denial detection when `kubectl auth can-i` exits successfully but returns `no`.
 - Functional validation failure when port-forward output does not indicate readiness.

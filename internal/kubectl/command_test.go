@@ -37,7 +37,8 @@ func TestBuildAuthCanICommand(t *testing.T) {
 	cmd := AuthCanICommand(AuthCanIOptions{
 		Namespace:   "dev-connect",
 		Verb:        "create",
-		Resource:    "pods/portforward",
+		Resource:    "pods",
+		Subresource: "portforward",
 		ContextName: "platform-dev",
 	})
 
@@ -46,7 +47,8 @@ func TestBuildAuthCanICommand(t *testing.T) {
 		"-n", "dev-connect",
 		"auth", "can-i",
 		"create",
-		"pods/portforward",
+		"pods",
+		"--subresource=portforward",
 	}
 
 	if !equalStrings(cmd.Args, want) {

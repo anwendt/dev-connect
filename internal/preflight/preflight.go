@@ -54,11 +54,16 @@ func Validate(ctx context.Context, options Options) (Result, error) {
 	rbac, err := options.Runner.Run(ctx, kubectl.AuthCanICommand(kubectl.AuthCanIOptions{
 		Namespace:   options.Namespace,
 		Verb:        "create",
-		Resource:    "pods/portforward",
+		Resource:    "pods",
+		Subresource: "portforward",
 		ContextName: options.ContextName,
 		Kubeconfig:  options.Kubeconfig,
 	}))
 	if err != nil {
+		// kubectl auth can-i prints "no" and exits with code 1 when access is denied.
+		if strings.TrimSpace(rbac.Stdout) == "no" {
+			return Result{ConnectivityOK: true}, ErrPermissionDenied
+		}
 		return Result{ConnectivityOK: true}, fmt.Errorf("verify kubectl port-forward RBAC: %w", err)
 	}
 	if strings.TrimSpace(rbac.Stdout) != "yes" {
