@@ -38,7 +38,7 @@ func TestFakeKubectlSupportsVersionAndInvocationLog(t *testing.T) {
 func TestFakeKubectlSupportsRBACDenial(t *testing.T) {
 	fake := buildFakeKubectl(t)
 
-	cmd := exec.Command(fake, "auth", "can-i", "create", "pods/portforward")
+	cmd := exec.Command(fake, "auth", "can-i", "create", "pods", "--subresource=portforward")
 	cmd.Env = append(os.Environ(), "DEV_CONNECT_FAKE_KUBECTL_CAN_I=no")
 	output, err := cmd.CombinedOutput()
 	if err == nil {

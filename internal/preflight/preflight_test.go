@@ -39,7 +39,7 @@ func TestValidateRunsConnectivityRBACAndFunctionalPortForwardChecks(t *testing.T
 		t.Fatalf("commands = %d, want 3", len(commands))
 	}
 	assertArgs(t, commands[0].Args, []string{"--kubeconfig", "/tmp/kubeconfig", "--context", "platform-dev", "version"})
-	assertArgs(t, commands[1].Args, []string{"--kubeconfig", "/tmp/kubeconfig", "--context", "platform-dev", "-n", "dev-connect", "auth", "can-i", "create", "pods/portforward"})
+	assertArgs(t, commands[1].Args, []string{"--kubeconfig", "/tmp/kubeconfig", "--context", "platform-dev", "-n", "dev-connect", "auth", "can-i", "create", "pods", "--subresource=portforward"})
 	assertArgs(t, commands[2].Args, []string{"--kubeconfig", "/tmp/kubeconfig", "--context", "platform-dev", "-n", "dev-connect", "port-forward", "service/dev-connect-gateway-dev01", "55221:22"})
 }
 
@@ -159,5 +159,41 @@ func assertArgs(t *testing.T, got, want []string) {
 		if got[i] != want[i] {
 			t.Fatalf("args[%d] = %q, want %q\nall args: %#v", i, got[i], want[i], got)
 		}
+	}
+}
+
+func TestValidateReportsPermissionDeniedWhenKubectlExitsOneWithNo(t *testing.T) {
+	runner := kubectl.NewFakeRunner(
+		kubectl.FakeResult{Stdout: "Client Version: v1.30.0\nServer Version: v1.30.0\n"},
+		kubectl.FakeResult{Stdout: "no\n", ExitCode: 1},
+	)
+
+	_, err := Validate(context.Background(), Options{
+		Runner:     runner,
+		Namespace:  "dev-connect",
+		Service:    "dev-connect-gateway-dev01",
+		LocalPort:  55221,
+		RemotePort: 22,
+	})
+	if !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("error = %v, want ErrPermissionDenied", err)
+	}
+}
+
+func TestValidateKeepsOtherRBACCheckFailures(t *testing.T) {
+	runner := kubectl.NewFakeRunner(
+		kubectl.FakeResult{Stdout: "Client Version: v1.30.0\nServer Version: v1.30.0\n"},
+		kubectl.FakeResult{Stderr: "error: You must be logged in to the server", ExitCode: 1},
+	)
+
+	_, err := Validate(context.Background(), Options{
+		Runner:     runner,
+		Namespace:  "dev-connect",
+		Service:    "dev-connect-gateway-dev01",
+		LocalPort:  55221,
+		RemotePort: 22,
+	})
+	if err == nil || errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("error = %v, want a non-permission RBAC check failure", err)
 	}
 }

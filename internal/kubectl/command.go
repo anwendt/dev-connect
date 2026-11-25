@@ -68,9 +68,13 @@ type PortForwardOptions struct {
 
 // AuthCanIOptions describes a kubectl auth can-i command.
 type AuthCanIOptions struct {
-	Namespace   string
-	Verb        string
-	Resource    string
+	Namespace string
+	Verb      string
+	Resource  string
+	// Subresource is passed as --subresource. kubectl reads "pods/portforward"
+	// as the pod named "portforward", so a subresource must not be written
+	// into Resource.
+	Subresource string
 	ContextName string
 	Kubeconfig  string
 }
@@ -101,6 +105,9 @@ func AuthCanICommand(options AuthCanIOptions) Command {
 		options.Verb,
 		options.Resource,
 	)
+	if options.Subresource != "" {
+		args = append(args, "--subresource="+options.Subresource)
+	}
 	return Command{Args: args}
 }
 

@@ -278,7 +278,7 @@ if %errorlevel%==0 (
   echo Server Version: v1.30.0
   exit /b 0
 )
-echo %args% | findstr /C:"auth can-i create pods/portforward" >nul
+echo %args% | findstr /C:"auth can-i create pods --subresource=portforward" >nul
 if %errorlevel%==0 (
   echo ` + canI + `
   exit /b 0
@@ -305,7 +305,7 @@ case "$*" in
     echo "Client Version: v1.30.0"
     echo "Server Version: v1.30.0"
     ;;
-  *"auth can-i create pods/portforward"*)
+  *"auth can-i create pods --subresource=portforward"*)
     echo "` + canI + `"
     ;;
   *"port-forward"*)
